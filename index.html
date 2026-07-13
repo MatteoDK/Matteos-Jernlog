@@ -580,7 +580,9 @@ function renderLog(){
     }
   }
   searchInput.addEventListener("input", doSearch);
-  searchInput.focus();
+  // Bemærk: søgefeltet fokuseres bevidst IKKE automatisk her (heller ikke
+  // efter "Skift ✕" eller "Gem sæt") — tastaturet skal kun poppe op hvis
+  // man selv trykker i feltet.
 
   attachLogFormHandlers();
 }
@@ -1356,6 +1358,26 @@ function runMigrations(){
     localStorage.setItem("jernlog_migration_ezbarcurls_datefix_v1", "1");
   }
 }
+
+/* ---------------- Luk tastatur ved tryk udenfor et felt ---------------- */
+document.addEventListener("touchstart", function(e){
+  var active = document.activeElement;
+  if(!active) return;
+  var activeTag = active.tagName;
+  if(activeTag!=="INPUT" && activeTag!=="TEXTAREA" && activeTag!=="SELECT") return;
+  var targetTag = e.target.tagName;
+  if(targetTag==="INPUT" || targetTag==="TEXTAREA" || targetTag==="SELECT") return;
+  active.blur();
+}, {passive:true});
+document.addEventListener("mousedown", function(e){
+  var active = document.activeElement;
+  if(!active) return;
+  var activeTag = active.tagName;
+  if(activeTag!=="INPUT" && activeTag!=="TEXTAREA" && activeTag!=="SELECT") return;
+  var targetTag = e.target.tagName;
+  if(targetTag==="INPUT" || targetTag==="TEXTAREA" || targetTag==="SELECT") return;
+  active.blur();
+});
 
 /* ---------------- Init ---------------- */
 seedIfNeeded();
