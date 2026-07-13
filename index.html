@@ -145,7 +145,7 @@
 <body>
 <div class="app" id="app">
   <header class="topbar">
-    <div class="title"><span class="dot"></span> Master Matteos Jernlog</div>
+    <div class="title" id="appTitleBtn" style="cursor:pointer;"><span class="dot"></span> Master Matteos Jernlog</div>
     <button class="menu-btn" id="menuBtn">☰</button>
   </header>
 
@@ -466,6 +466,17 @@ function showToast(msg, ms){
   clearTimeout(t._timer);
   t._timer = setTimeout(function(){ t.classList.remove("show"); }, ms||2200);
 }
+
+/* ---------------- App-titel = genvej til hovedskærmen ---------------- */
+var appTitleBtn = document.getElementById("appTitleBtn");
+appTitleBtn.addEventListener("click", function(){
+  logDraft.exerciseId = null;
+  logDraft.musclePos = "1-2";
+  logDraft.repsMode = "wheel";
+  logDraft.wheelValue = 8;
+  logDraft.textValue = "";
+  goto("log");
+});
 
 /* ---------------- Menu ---------------- */
 var menuBtn = document.getElementById("menuBtn");
