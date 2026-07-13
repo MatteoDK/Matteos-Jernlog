@@ -151,8 +151,9 @@
   <div class="menu-overlay" id="menuOverlay">
     <div class="menu-panel">
       <div class="menu-item" data-view="log"><span class="ic">🏋️</span> Log øvelse</div>
-      <div class="menu-item" data-view="history"><span class="ic">📈</span> Historik</div>
+      <div class="menu-item" data-view="history"><span class="ic">📈</span> Historik/Statistik</div>
       <div class="menu-item" data-view="programs"><span class="ic">📋</span> Programmer</div>
+      <div class="menu-item" data-view="wins"><span class="ic">🔥</span> Wins & Plateaus</div>
     </div>
   </div>
 
@@ -424,6 +425,7 @@ function render(){
   else if(state.view==="exerciseHistory") renderExerciseHistory(state.selectedExerciseId);
   else if(state.view==="programs") renderProgramsList();
   else if(state.view==="programDetail") renderProgramDetail(state.programKey);
+  else if(state.view==="wins") renderWinsPlateaus();
 }
 
 function goto(view, extra){
@@ -819,7 +821,7 @@ function renderHistoryList(){
     return da < db ? 1 : -1; // most recently logged first
   });
 
-  var html = '<h2 class="section">Historik</h2>';
+  var html = '<h2 class="section">Historik/Statistik</h2>';
   html += '<div class="card"><div class="search-wrap"><input type="text" id="histSearch" placeholder="Søg efter øvelse..." autocomplete="off"></div></div>';
   html += '<div class="card" id="histList" style="padding:0;"></div>';
   main.innerHTML = html;
@@ -894,8 +896,9 @@ function renderExerciseHistory(exId){
     var s = sessions[idx];
     var isPR = best && s.date===best.date && s.topScore===best.topScore;
     var trend = trendForSession(sessions, idx);
+    var dateLabel = idx===0 ? ("Startvægt "+s.date.slice(0,4)) : fmtDateDisplay(s.date);
     html += '<div class="session-block">';
-    html += '<div class="session-header"><span class="session-date">'+fmtDateDisplay(s.date)+'</span>'+(isPR?'<span class="pr-badge">🏆 PR</span>':(trend?trendArrow(trend):''))+'</div>';
+    html += '<div class="session-header"><span class="session-date">'+dateLabel+'</span>'+(isPR?'<span class="pr-badge">🏆 PR</span>':(trend?trendArrow(trend):''))+'</div>';
     s.sets.forEach(function(set){
       var posLabel = " · Øvelse "+(set.musclePos||"1-2");
       html += '<div class="set-line" data-logid="'+set.id+'">';
@@ -1080,6 +1083,89 @@ function renderProgramDetail(key){
   });
 }
 
+/* =========================================================
+   VIEW: WINS & PLATEAUS
+   ========================================================= */
+function computeProgressRanking(){
+  var exList = loadEx();
+  var results = [];
+  exList.forEach(function(ex){
+    var sessions = sessionsForExercise(ex.id).filter(function(s){ return s.topScore!==null; });
+    var n = sessions.length;
+    if(n<2) return; // brug for mindst 2 træningsgange for at kunne sammenligne
+    var windowSessions = sessions.slice(Math.max(0, n-10));
+    var wn = windowSessions.length;
+    var groupSize = Math.max(1, Math.min(3, Math.floor(wn/2)));
+    var earlyGroup = windowSessions.slice(0, groupSize);
+    var lateGroup = windowSessions.slice(wn-groupSize);
+    var earlyAvg = earlyGroup.reduce(function(sum,s){return sum+s.topScore;},0) / earlyGroup.length;
+    var lateAvg = lateGroup.reduce(function(sum,s){return sum+s.topScore;},0) / lateGroup.length;
+    var pct = earlyAvg>0 ? ((lateAvg-earlyAvg)/earlyAvg)*100 : 0;
+    results.push({
+      exerciseId: ex.id,
+      name: ex.name,
+      bodyweight: ex.bodyweight,
+      pct: pct,
+      earlyTopSet: earlyGroup[earlyGroup.length-1].topSet,
+      lateTopSet: lateGroup[lateGroup.length-1].topSet,
+      sessionsUsed: wn
+    });
+  });
+  var sorted = results.slice().sort(function(a,b){ return b.pct-a.pct; });
+  var wins = sorted.slice(0,5);
+  var plateaus = sorted.slice().sort(function(a,b){ return a.pct-b.pct; }).slice(0,5);
+  return { wins: wins, plateaus: plateaus };
+}
+
+function formatSetShort(set, bodyweight){
+  if(bodyweight){
+    return (set.weight? ("+"+set.weight+"kg") : "kropsvægt")+"×"+(set.repsLabel||set.reps);
+  }
+  return set.weight+"kg×"+(set.repsLabel||set.reps);
+}
+
+function renderRankingRow(item){
+  var sign = item.pct>0 ? "+" : "";
+  var colorClass = item.pct > 2 ? "up" : (item.pct < -2 ? "down" : "same");
+  var html = '<div class="list-row" data-exid="'+item.exerciseId+'" style="cursor:pointer;">';
+  html += '<div><div class="name">'+escapeHtml(item.name)+'</div>';
+  html += '<div class="muted">'+formatSetShort(item.earlyTopSet, item.bodyweight)+' → '+formatSetShort(item.lateTopSet, item.bodyweight)+' · '+item.sessionsUsed+' gange</div>';
+  html += '</div><div class="trend '+colorClass+'" style="font-weight:800;">'+sign+item.pct.toFixed(0)+'%</div>';
+  html += '</div>';
+  return html;
+}
+
+function renderWinsPlateaus(){
+  var ranking = computeProgressRanking();
+  var html = '<h2 class="section">Wins & Plateaus</h2>';
+  html += '<div class="muted" style="margin-bottom:16px;">Baseret på dine seneste træningsgange pr. øvelse (op til 10), sammenlignet først vs. sidst i vinduet.</div>';
+
+  html += '<h2 class="section">🏆 Størst fremgang</h2>';
+  if(ranking.wins.length===0){
+    html += '<div class="card"><div class="empty-state">Log en øvelse mindst 2 gange for at se fremgang her.</div></div>';
+  } else {
+    html += '<div class="card" style="padding:0;">';
+    ranking.wins.forEach(function(item){ html += renderRankingRow(item); });
+    html += '</div>';
+  }
+
+  html += '<h2 class="section">📉 Mindst fremgang / stagneret</h2>';
+  if(ranking.plateaus.length===0){
+    html += '<div class="card"><div class="empty-state">Ingen data endnu.</div></div>';
+  } else {
+    html += '<div class="card" style="padding:0;">';
+    ranking.plateaus.forEach(function(item){ html += renderRankingRow(item); });
+    html += '</div>';
+  }
+
+  main.innerHTML = html;
+  main.querySelectorAll("[data-exid]").forEach(function(row){
+    row.addEventListener("click", function(){
+      goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-exid")});
+    });
+  });
+}
+
 /* ---------------- Utils ---------------- */
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, function(c){
@@ -1087,8 +1173,29 @@ function escapeHtml(s){
   });
 }
 
+/* ---------------- Migrationer (kører én gang, også på telefoner der allerede er sat op) ---------------- */
+function runMigrations(){
+  if(!localStorage.getItem("jernlog_migration_ezbarcurls_v1")){
+    var exList = loadEx();
+    if(!exList.some(function(e){ return e.name==="EZ-bar curls"; })){
+      var id = "ez-bar-curls", n=2;
+      while(exList.some(function(e){return e.id===id;})){ id = "ez-bar-curls-"+n; n++; }
+      exList.push({id:id, name:"EZ-bar curls", bodyweight:false});
+      saveEx(exList);
+
+      var logs = loadLogs();
+      var today = todayISO();
+      logs.push({id:uid("log"), exerciseId:id, date:today, setNumber:1, weight:30, reps:8, repsLabel:"8", musclePos:"1-2", skipped:false});
+      logs.push({id:uid("log"), exerciseId:id, date:today, setNumber:2, weight:30, reps:6, repsLabel:"6-7", musclePos:"1-2", skipped:false});
+      saveLogs(logs);
+    }
+    localStorage.setItem("jernlog_migration_ezbarcurls_v1", "1");
+  }
+}
+
 /* ---------------- Init ---------------- */
 seedIfNeeded();
+runMigrations();
 render();
 
 })();
