@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Master Matteos Jernlog">
+<meta name="theme-color" content="#101012">
 <title>Master Matteos Jernlog</title>
 <style>
   :root{
@@ -124,6 +129,16 @@
 
   .day-title{font-size:18px;font-weight:800;margin:0 0 4px;}
   .train-tag{display:inline-block;background:var(--yellow);color:#141400;font-weight:800;font-size:12px;padding:2px 8px;border-radius:8px;margin-bottom:8px;}
+
+  /* Reps wheel picker */
+  .reps-picker-wrap{position:relative;height:64px;margin-bottom:4px;}
+  .reps-picker-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;height:100%;align-items:center;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .reps-picker-track::-webkit-scrollbar{display:none;}
+  .reps-item{scroll-snap-align:center;flex:0 0 56px;text-align:center;font-size:20px;font-weight:700;color:var(--text-dim);display:flex;align-items:center;justify-content:center;height:100%;transition:font-size 0.1s, color 0.1s;}
+  .reps-item.active{color:var(--yellow);font-size:30px;}
+  .reps-pad{flex:0 0 calc(50% - 28px);}
+  .reps-picker-indicator{position:absolute;left:50%;top:4px;bottom:4px;width:56px;margin-left:-28px;border-top:2px solid var(--yellow);border-bottom:2px solid var(--yellow);pointer-events:none;border-radius:6px;}
+  .mode-toggle-link{text-align:center;font-size:13px;color:var(--yellow);font-weight:700;padding:8px 0 2px;}
 </style>
 </head>
 <body>
@@ -457,7 +472,7 @@ modalOverlay.addEventListener("click", function(e){ if(e.target===modalOverlay) 
 /* =========================================================
    VIEW: LOG
    ========================================================= */
-var logDraft = { exerciseId:null, musclePos:"1-2" };
+var logDraft = { exerciseId:null, musclePos:"1-2", repsMode:"wheel", wheelValue:8, textValue:"" };
 
 function renderLog(){
   var ex = loadEx();
@@ -501,6 +516,9 @@ function renderLog(){
       it.addEventListener("click", function(){
         logDraft.exerciseId = it.getAttribute("data-id");
         logDraft.musclePos = "1-2";
+        logDraft.repsMode = "wheel";
+        logDraft.wheelValue = 8;
+        logDraft.textValue = "";
         searchInput.value = "";
         renderLog();
       });
@@ -547,6 +565,9 @@ function openAddExerciseModal(prefillName){
     saveEx(list);
     logDraft.exerciseId = uniqueId;
     logDraft.musclePos = "1-2";
+    logDraft.repsMode = "wheel";
+    logDraft.wheelValue = 8;
+    logDraft.textValue = "";
     closeModal();
     renderLog();
     showToast("Øvelse tilføjet");
@@ -584,7 +605,21 @@ function renderLogForm(exObj){
   } else {
     html += '<div class="field"><label class="field-label">Vægt (kg)</label><input type="text" inputmode="decimal" id="logWeight" placeholder="fx 22.5"></div>';
   }
-  html += '<div class="field"><label class="field-label">Reps (skriv fx 8, eller et interval som 7-9 hvis du er usikker)</label><input type="text" id="logReps" placeholder="fx 8 eller 7-9"></div>';
+  html += '<div class="field"><label class="field-label">Reps</label>';
+  if(logDraft.repsMode==="text"){
+    html += '<input type="text" id="logReps" value="'+escapeHtml(logDraft.textValue||"")+'" placeholder="fx 8 eller 7-9">';
+    html += '<div class="mode-toggle-link" id="repsModeToggle">↺ Brug hjul i stedet</div>';
+  } else {
+    html += '<div class="reps-picker-wrap"><div class="reps-picker-track" id="repsPicker">';
+    html += '<div class="reps-pad"></div>';
+    for(var rv=1; rv<=15; rv++){
+      html += '<div class="reps-item'+(rv===logDraft.wheelValue?' active':'')+'" data-val="'+rv+'">'+rv+'</div>';
+    }
+    html += '<div class="reps-pad"></div>';
+    html += '</div><div class="reps-picker-indicator"></div></div>';
+    html += '<div class="mode-toggle-link" id="repsModeToggle">✎ Skriv interval i stedet (fx 7-9)</div>';
+  }
+  html += '</div>';
   html += '<div class="field"><label class="field-label">Tidspunkt i træningen (for denne muskel)</label>';
   html += '<div class="toggle-group" id="musclePosToggle">';
   ["1-2","3-4"].forEach(function(p){
@@ -599,7 +634,7 @@ function renderLogForm(exObj){
 
 function attachLogFormHandlers(){
   var clearBtn = document.getElementById("clearExBtn");
-  if(clearBtn) clearBtn.addEventListener("click", function(){ logDraft.exerciseId=null; logDraft.musclePos="1-2"; renderLog(); });
+  if(clearBtn) clearBtn.addEventListener("click", function(){ logDraft.exerciseId=null; logDraft.musclePos="1-2"; logDraft.repsMode="wheel"; logDraft.wheelValue=8; logDraft.textValue=""; renderLog(); });
 
   var musclePosToggle = document.getElementById("musclePosToggle");
   if(musclePosToggle){
@@ -612,13 +647,53 @@ function attachLogFormHandlers(){
     });
   }
 
+  var repsPicker = document.getElementById("repsPicker");
+  if(repsPicker){
+    var repsItems = repsPicker.querySelectorAll(".reps-item");
+    var itemWidth = 56;
+    function highlightIdx(idx){
+      repsItems.forEach(function(it){ it.classList.remove("active"); });
+      if(repsItems[idx]) repsItems[idx].classList.add("active");
+    }
+    var initialIdx = Math.max(0, Math.min(repsItems.length-1, logDraft.wheelValue-1));
+    repsPicker.scrollLeft = initialIdx*itemWidth;
+    highlightIdx(initialIdx);
+    var scrollTimer;
+    repsPicker.addEventListener("scroll", function(){
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(function(){
+        var idx = Math.round(repsPicker.scrollLeft/itemWidth);
+        idx = Math.max(0, Math.min(repsItems.length-1, idx));
+        highlightIdx(idx);
+        logDraft.wheelValue = parseInt(repsItems[idx].getAttribute("data-val"),10);
+      }, 90);
+    });
+  }
+
+  var repsModeToggle = document.getElementById("repsModeToggle");
+  if(repsModeToggle){
+    repsModeToggle.addEventListener("click", function(){
+      if(logDraft.repsMode==="text"){
+        logDraft.textValue = document.getElementById("logReps").value;
+        logDraft.repsMode = "wheel";
+      } else {
+        logDraft.repsMode = "text";
+      }
+      renderLog();
+    });
+  }
+
   var saveBtn = document.getElementById("saveSetBtn");
   if(saveBtn){
     saveBtn.addEventListener("click", function(){
       var exObj = getExerciseById(logDraft.exerciseId);
       var weightRaw = document.getElementById("logWeight").value;
-      var repsRaw = document.getElementById("logReps").value;
-      var parsedReps = parseReps(repsRaw);
+      var parsedReps;
+      if(logDraft.repsMode==="text"){
+        parsedReps = parseReps(document.getElementById("logReps").value);
+      } else {
+        parsedReps = { reps: logDraft.wheelValue, repsLabel: String(logDraft.wheelValue) };
+      }
       if(!parsedReps){ showToast("Udfyld reps (fx 8 eller 7-9)"); return; }
       var weight = parseWeight(weightRaw);
       if(exObj.bodyweight){ weight = weight===null? 0 : weight; }
@@ -945,6 +1020,9 @@ function renderProgramDetail(key){
     row.addEventListener("click", function(){
       logDraft.exerciseId = row.getAttribute("data-exid");
       logDraft.musclePos = "1-2";
+      logDraft.repsMode = "wheel";
+      logDraft.wheelValue = 8;
+      logDraft.textValue = "";
       goto("log");
     });
   });
