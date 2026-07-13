@@ -493,9 +493,33 @@ function renderLog(){
     if(exObj){
       html += renderLogForm(exObj);
     }
+  } else {
+    var suggested = getSuggestedExercises();
+    if(suggested.length){
+      html += '<h2 class="section">Foreslået i dag</h2>';
+      html += '<div class="card" style="padding:0;" id="suggestedList">';
+      suggested.forEach(function(e){
+        html += '<div class="list-row" data-id="'+e.id+'"><div class="name">'+escapeHtml(e.name)+'</div><div class="chev">Log ›</div></div>';
+      });
+      html += '</div>';
+    }
   }
 
   main.innerHTML = html;
+
+  var suggestedListBox = document.getElementById("suggestedList");
+  if(suggestedListBox){
+    suggestedListBox.querySelectorAll(".list-row").forEach(function(row){
+      row.addEventListener("click", function(){
+        logDraft.exerciseId = row.getAttribute("data-id");
+        logDraft.musclePos = "1-2";
+        logDraft.repsMode = "wheel";
+        logDraft.wheelValue = 8;
+        logDraft.textValue = "";
+        renderLog();
+      });
+    });
+  }
 
   var searchInput = document.getElementById("exSearch");
   var resultsBox = document.getElementById("searchResults");
@@ -580,6 +604,32 @@ function openAddExerciseModal(prefillName){
 function nextSetNumberForToday(exId){
   var todays = loadLogs().filter(function(l){return l.exerciseId===exId && l.date===todayISO();});
   return todays.length+1;
+}
+
+function getTodayDayContext(){
+  var todayLogs = loadLogs().filter(function(l){ return l.date===todayISO(); });
+  if(todayLogs.length===0) return null;
+  var programs = loadPrograms();
+  for(var i=0;i<todayLogs.length;i++){
+    var exId = todayLogs[i].exerciseId;
+    for(var key in programs){
+      var p = programs[key];
+      if(p.a.indexOf(exId)!==-1 || p.b.indexOf(exId)!==-1){
+        return p;
+      }
+    }
+  }
+  return null;
+}
+
+function getSuggestedExercises(){
+  var dayCtx = getTodayDayContext();
+  if(!dayCtx) return [];
+  var poolIds = [];
+  dayCtx.a.concat(dayCtx.b).forEach(function(id){ if(poolIds.indexOf(id)===-1) poolIds.push(id); });
+  var todayLoggedIds = {};
+  loadLogs().filter(function(l){return l.date===todayISO();}).forEach(function(l){ todayLoggedIds[l.exerciseId]=true; });
+  return poolIds.filter(function(id){ return !todayLoggedIds[id]; }).map(function(id){ return getExerciseById(id); }).filter(Boolean);
 }
 
 function renderLogForm(exObj){
