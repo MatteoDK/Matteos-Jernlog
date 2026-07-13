@@ -586,7 +586,7 @@ function renderLogForm(exObj){
   var html = '<div class="card">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
   html += '<div style="font-size:17px;font-weight:800;">'+escapeHtml(exObj.name)+'</div>';
-  html += '<button class="icon-btn" id="clearExBtn" style="font-size:14px;">Skift ✕</button>';
+  html += '<div style="display:flex;gap:4px;"><button class="icon-btn" id="renameExBtn" style="font-size:16px;">✎</button><button class="icon-btn" id="clearExBtn" style="font-size:14px;">Skift ✕</button></div>';
   html += '</div>';
   if(setNumsSorted.length){
     html += '<div class="muted" style="margin-bottom:14px;">';
@@ -632,9 +632,52 @@ function renderLogForm(exObj){
   return html;
 }
 
+function openEditExerciseModal(exId, onSaved){
+  var exObj = getExerciseById(exId);
+  if(!exObj) return;
+  var html = '<h3>Omdøb øvelse</h3>'+
+    '<div class="field"><label class="field-label">Navn</label><input type="text" id="editExName" value="'+escapeHtml(exObj.name)+'"></div>'+
+    '<div class="field"><label class="field-label">Type</label>'+
+    '<div class="toggle-group" id="editExTypeToggle">'+
+    '<div class="toggle-opt'+(!exObj.bodyweight?' selected':'')+'" data-bw="0">Vægt/maskine</div>'+
+    '<div class="toggle-opt'+(exObj.bodyweight?' selected':'')+'" data-bw="1">Kropsvægt</div>'+
+    '</div></div>'+
+    '<button class="btn primary" id="saveRenameEx">Gem</button>';
+  openModal(html);
+  var bwVal = exObj.bodyweight ? 1 : 0;
+  modalSheet.querySelectorAll("#editExTypeToggle .toggle-opt").forEach(function(opt){
+    opt.addEventListener("click", function(){
+      modalSheet.querySelectorAll("#editExTypeToggle .toggle-opt").forEach(function(o){o.classList.remove("selected");});
+      opt.classList.add("selected");
+      bwVal = parseInt(opt.getAttribute("data-bw"));
+    });
+  });
+  document.getElementById("saveRenameEx").addEventListener("click", function(){
+    var newName = document.getElementById("editExName").value.trim();
+    if(!newName){ showToast("Skriv et navn"); return; }
+    var list = loadEx();
+    var item = list.find(function(e){ return e.id===exId; });
+    if(item){
+      item.name = newName;
+      item.bodyweight = bwVal===1;
+      saveEx(list);
+    }
+    closeModal();
+    showToast("Øvelse opdateret");
+    if(onSaved) onSaved();
+  });
+}
+
 function attachLogFormHandlers(){
   var clearBtn = document.getElementById("clearExBtn");
   if(clearBtn) clearBtn.addEventListener("click", function(){ logDraft.exerciseId=null; logDraft.musclePos="1-2"; logDraft.repsMode="wheel"; logDraft.wheelValue=8; logDraft.textValue=""; renderLog(); });
+
+  var renameBtn = document.getElementById("renameExBtn");
+  if(renameBtn){
+    renameBtn.addEventListener("click", function(){
+      openEditExerciseModal(logDraft.exerciseId, function(){ renderLog(); });
+    });
+  }
 
   var musclePosToggle = document.getElementById("musclePosToggle");
   if(musclePosToggle){
@@ -816,12 +859,18 @@ function renderExerciseHistory(exId){
   var best = allTimeBest(exId);
 
   var html = '<div class="back-btn" id="backToHist">‹ Historik</div>';
-  html += '<h2 class="section" style="margin-top:0;">'+escapeHtml(exObj.name)+'</h2>';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+  html += '<h2 class="section" style="margin-top:0;margin-bottom:0;">'+escapeHtml(exObj.name)+'</h2>';
+  html += '<button class="icon-btn" id="renameExHistBtn" style="font-size:16px;">✎</button>';
+  html += '</div>';
 
   if(sessions.length===0){
     html += '<div class="card"><div class="empty-state">Ingen log endnu for denne øvelse.</div></div>';
     main.innerHTML = html;
     document.getElementById("backToHist").addEventListener("click", function(){ goto("history"); });
+    document.getElementById("renameExHistBtn").addEventListener("click", function(){
+      openEditExerciseModal(exId, function(){ renderExerciseHistory(exId); });
+    });
     return;
   }
 
@@ -870,6 +919,9 @@ function renderExerciseHistory(exId){
 
   main.innerHTML = html;
   document.getElementById("backToHist").addEventListener("click", function(){ goto("history"); });
+  document.getElementById("renameExHistBtn").addEventListener("click", function(){
+    openEditExerciseModal(exId, function(){ renderExerciseHistory(exId); });
+  });
 
   main.querySelectorAll('[data-action="del"]').forEach(function(btn){
     btn.addEventListener("click", function(){
