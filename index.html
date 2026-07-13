@@ -857,6 +857,7 @@ function attachLogFormHandlers(){
         id: uid("log"),
         exerciseId: exObj.id,
         date: todayISO(),
+        loggedAt: Date.now(),
         setNumber: setNum,
         weight: weight,
         reps: parsedReps.reps,
@@ -889,6 +890,7 @@ function attachLogFormHandlers(){
         id: uid("log"),
         exerciseId: exObj.id,
         date: todayISO(),
+        loggedAt: Date.now(),
         setNumber: setNum,
         weight: null,
         reps: null,
@@ -914,16 +916,23 @@ function renderHistoryList(){
   logs.forEach(function(l){loggedIds[l.exerciseId]=true;});
 
   var lastDateFor = {};
+  var lastLoggedAtFor = {};
   ex.forEach(function(e){
     if(!loggedIds[e.id]) return;
     var sess = sessionsForExercise(e.id);
     lastDateFor[e.id] = sess.length ? sess[sess.length-1].date : "";
+    var maxAt = 0;
+    logs.forEach(function(l){ if(l.exerciseId===e.id && l.loggedAt && l.loggedAt>maxAt) maxAt = l.loggedAt; });
+    lastLoggedAtFor[e.id] = maxAt;
   });
   ex = ex.slice().sort(function(a,b){
     var da = lastDateFor[a.id] || "";
     var db = lastDateFor[b.id] || "";
-    if(da===db) return a.name.localeCompare(b.name);
-    return da < db ? 1 : -1; // most recently logged first
+    if(da!==db) return da < db ? 1 : -1; // most recently logged first
+    var ta = lastLoggedAtFor[a.id] || 0;
+    var tb = lastLoggedAtFor[b.id] || 0;
+    if(ta!==tb) return ta < tb ? 1 : -1; // same day: most recently logged (by time) first
+    return a.name.localeCompare(b.name);
   });
 
   var html = '<h2 class="section">Historik/Statistik</h2>';
@@ -1326,6 +1335,25 @@ function runMigrations(){
     });
     if(changed) saveEx(exList2);
     localStorage.setItem("jernlog_migration_muscle_v1", "1");
+  }
+
+  if(!localStorage.getItem("jernlog_migration_ezbarcurls_datefix_v1")){
+    // Den oprindelige EZ-bar curls-migration brugte "dags dato" på det tidspunkt
+    // migrationen faktisk kørte på telefonen (ikke dengang den blev bedt om) —
+    // det gjorde at de 2 auto-loggede sæt fejlagtigt dukkede op som "logget i dag",
+    // hvilket forvirrede både "Foreslået i dag" og historik-sorteringen.
+    // Her rettes datoen til en fast, neutral dato i stedet.
+    var logs3 = loadLogs();
+    var fixedAny = false;
+    logs3.forEach(function(l){
+      if(l.exerciseId==="ez-bar-curls" && !l.loggedAt){
+        l.date = "2026-06-20";
+        l.loggedAt = 1;
+        fixedAny = true;
+      }
+    });
+    if(fixedAny) saveLogs(logs3);
+    localStorage.setItem("jernlog_migration_ezbarcurls_datefix_v1", "1");
   }
 }
 
