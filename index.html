@@ -177,6 +177,28 @@ var LS_LOGS = "jernlog_logs";
 var LS_PROGRAMS = "jernlog_programs";
 var LS_SEEDED = "jernlog_seeded_v1";
 
+/* Muskelgrupper -> hvilken træningsdag (1,2,3) de hører til.
+   Bruges til "Foreslået i dag": når du logger din første øvelse,
+   findes dens muskelgruppe, og alle andre øvelser med muskelgruppe
+   fra samme dag bliver foreslået — uanset om det er en fast eller
+   en selv-tilføjet øvelse. */
+var MUSCLE_DAY = {
+  "ryg":1, "bagskulder":1, "tricep":1,
+  "ben":2, "mave":2,
+  "bryst":3, "sideskulder":3, "forskulder":3, "biceps":3
+};
+var MUSCLE_LABELS = {
+  "ryg":"Ryg", "bagskulder":"Bagskulder", "tricep":"Tricep",
+  "ben":"Ben", "mave":"Mave",
+  "bryst":"Bryst", "sideskulder":"Sideskulder", "forskulder":"Forskulder", "biceps":"Biceps"
+};
+var MUSCLE_GROUPS_BY_DAY = [
+  {day:1, title:"Dag 1 — Ryg & Triceps", muscles:["ryg","bagskulder","tricep"]},
+  {day:2, title:"Dag 2 — Ben & Mave", muscles:["ben","mave"]},
+  {day:3, title:"Dag 3 — Bryst, Skulder & Biceps", muscles:["bryst","sideskulder","forskulder","biceps"]}
+];
+function dayGroupForMuscle(muscle){ return MUSCLE_DAY[muscle] || null; }
+
 function uid(prefix){ return prefix + "_" + Math.random().toString(36).slice(2,9); }
 function todayISO(){ var d=new Date(); return d.toISOString().slice(0,10); }
 function fmtDateDisplay(iso){
@@ -226,49 +248,49 @@ function seedIfNeeded(){
   if(localStorage.getItem(LS_SEEDED)) return;
 
   var EX = [
-    {id:"weighted-pull-ups", name:"Weighted pull-ups", bodyweight:true},
-    {id:"chest-supported-row-neutral", name:"Chest-supported row (neutral grip)", bodyweight:false},
-    {id:"chest-supported-row-wide", name:"Chest-supported row (wide grip)", bodyweight:false},
-    {id:"rear-delt-flyes-cable", name:"Rear delt flyes (cable)", bodyweight:false},
-    {id:"pec-deck-rear-delt", name:"Pec deck rear delt", bodyweight:false},
-    {id:"one-arm-cable-pushdown", name:"One-arm cable pushdown", bodyweight:false},
-    {id:"dumbbell-skullcrushers", name:"Dumbbell skullcrushers", bodyweight:false},
-    {id:"chin-ups", name:"Chin-ups", bodyweight:true},
-    {id:"bent-over-rows", name:"Bent-over rows", bodyweight:false},
-    {id:"close-grip-lat-pulldown", name:"Close-grip lat pulldown", bodyweight:false},
-    {id:"wide-grip-lat-pulldown", name:"Wide-grip lat pulldown", bodyweight:false},
-    {id:"rear-delt-flyes-single", name:"Rear delt flyes (single arm)", bodyweight:false},
-    {id:"barbell-skullcrushers", name:"Barbell skullcrushers", bodyweight:false},
-    {id:"rope-pushdown-cable", name:"Rope pushdown (cable)", bodyweight:false},
-    {id:"single-arm-tricep-pushdown", name:"Single-arm tricep pushdown", bodyweight:false},
-    {id:"leg-extension", name:"Leg extension", bodyweight:false},
-    {id:"squat", name:"Squat", bodyweight:false},
-    {id:"hamstring-curl", name:"Hamstring curl", bodyweight:false},
-    {id:"barbell-rdl", name:"Barbell RDL", bodyweight:false},
-    {id:"hip-abduction-adduction", name:"Hip abduction/adduction machine", bodyweight:false},
-    {id:"calf-raise", name:"Calf raise", bodyweight:false},
-    {id:"leg-raises", name:"Leg raises", bodyweight:true},
-    {id:"cable-crunches", name:"Cable crunches", bodyweight:false},
-    {id:"bulgarian-split-squat", name:"Bulgarian split squat", bodyweight:false},
-    {id:"pendulum-squat", name:"Pendulum squat", bodyweight:false},
-    {id:"calf-raise-seated", name:"Calf raise (seated)", bodyweight:false},
-    {id:"machine-crunches", name:"Machine crunches", bodyweight:false},
-    {id:"bench-press", name:"Bench press", bodyweight:false},
-    {id:"incline-smith-press", name:"Incline smith machine press", bodyweight:false},
-    {id:"pec-deck", name:"Pec deck", bodyweight:false},
-    {id:"lateral-raise-cable-single", name:"Lateral raise (cable, single arm)", bodyweight:false},
-    {id:"shoulder-press-barbell", name:"Shoulder press (barbell)", bodyweight:false},
-    {id:"incline-dumbbell-curl", name:"Incline dumbbell curl", bodyweight:false},
-    {id:"dumbbell-preacher-machine", name:"Dumbbell preacher curl (machine)", bodyweight:false},
-    {id:"ez-bar-curl", name:"EZ-bar curl (overhand)", bodyweight:false},
-    {id:"incline-dumbbell-press", name:"Incline dumbbell press", bodyweight:false},
-    {id:"dips", name:"Dips", bodyweight:true},
-    {id:"cable-fly-upper", name:"Cable fly (upper)", bodyweight:false},
-    {id:"cable-fly-mid", name:"Cable fly (mid)", bodyweight:false},
-    {id:"military-press-dumbbell", name:"Military press (dumbbell)", bodyweight:false},
-    {id:"lateral-raise-lying", name:"Lateral raise (lying)", bodyweight:false},
-    {id:"bayesian-cable-curl", name:"Bayesian cable curl", bodyweight:false},
-    {id:"hammer-curl-preacher", name:"Hammer curl (preacher/iso)", bodyweight:false}
+    {id:"weighted-pull-ups", name:"Weighted pull-ups", bodyweight:true, muscle:"ryg"},
+    {id:"chest-supported-row-neutral", name:"Chest-supported row (neutral grip)", bodyweight:false, muscle:"ryg"},
+    {id:"chest-supported-row-wide", name:"Chest-supported row (wide grip)", bodyweight:false, muscle:"ryg"},
+    {id:"rear-delt-flyes-cable", name:"Rear delt flyes (cable)", bodyweight:false, muscle:"bagskulder"},
+    {id:"pec-deck-rear-delt", name:"Pec deck rear delt", bodyweight:false, muscle:"bagskulder"},
+    {id:"one-arm-cable-pushdown", name:"One-arm cable pushdown", bodyweight:false, muscle:"tricep"},
+    {id:"dumbbell-skullcrushers", name:"Dumbbell skullcrushers", bodyweight:false, muscle:"tricep"},
+    {id:"chin-ups", name:"Chin-ups", bodyweight:true, muscle:"ryg"},
+    {id:"bent-over-rows", name:"Bent-over rows", bodyweight:false, muscle:"ryg"},
+    {id:"close-grip-lat-pulldown", name:"Close-grip lat pulldown", bodyweight:false, muscle:"ryg"},
+    {id:"wide-grip-lat-pulldown", name:"Wide-grip lat pulldown", bodyweight:false, muscle:"ryg"},
+    {id:"rear-delt-flyes-single", name:"Rear delt flyes (single arm)", bodyweight:false, muscle:"bagskulder"},
+    {id:"barbell-skullcrushers", name:"Barbell skullcrushers", bodyweight:false, muscle:"tricep"},
+    {id:"rope-pushdown-cable", name:"Rope pushdown (cable)", bodyweight:false, muscle:"tricep"},
+    {id:"single-arm-tricep-pushdown", name:"Single-arm tricep pushdown", bodyweight:false, muscle:"tricep"},
+    {id:"leg-extension", name:"Leg extension", bodyweight:false, muscle:"ben"},
+    {id:"squat", name:"Squat", bodyweight:false, muscle:"ben"},
+    {id:"hamstring-curl", name:"Hamstring curl", bodyweight:false, muscle:"ben"},
+    {id:"barbell-rdl", name:"Barbell RDL", bodyweight:false, muscle:"ben"},
+    {id:"hip-abduction-adduction", name:"Hip abduction/adduction machine", bodyweight:false, muscle:"ben"},
+    {id:"calf-raise", name:"Calf raise", bodyweight:false, muscle:"ben"},
+    {id:"leg-raises", name:"Leg raises", bodyweight:true, muscle:"mave"},
+    {id:"cable-crunches", name:"Cable crunches", bodyweight:false, muscle:"mave"},
+    {id:"bulgarian-split-squat", name:"Bulgarian split squat", bodyweight:false, muscle:"ben"},
+    {id:"pendulum-squat", name:"Pendulum squat", bodyweight:false, muscle:"ben"},
+    {id:"calf-raise-seated", name:"Calf raise (seated)", bodyweight:false, muscle:"ben"},
+    {id:"machine-crunches", name:"Machine crunches", bodyweight:false, muscle:"mave"},
+    {id:"bench-press", name:"Bench press", bodyweight:false, muscle:"bryst"},
+    {id:"incline-smith-press", name:"Incline smith machine press", bodyweight:false, muscle:"bryst"},
+    {id:"pec-deck", name:"Pec deck", bodyweight:false, muscle:"bryst"},
+    {id:"lateral-raise-cable-single", name:"Lateral raise (cable, single arm)", bodyweight:false, muscle:"sideskulder"},
+    {id:"shoulder-press-barbell", name:"Shoulder press (barbell)", bodyweight:false, muscle:"forskulder"},
+    {id:"incline-dumbbell-curl", name:"Incline dumbbell curl", bodyweight:false, muscle:"biceps"},
+    {id:"dumbbell-preacher-machine", name:"Dumbbell preacher curl (machine)", bodyweight:false, muscle:"biceps"},
+    {id:"ez-bar-curl", name:"EZ-bar curl (overhand)", bodyweight:false, muscle:"biceps"},
+    {id:"incline-dumbbell-press", name:"Incline dumbbell press", bodyweight:false, muscle:"bryst"},
+    {id:"dips", name:"Dips", bodyweight:true, muscle:"bryst"},
+    {id:"cable-fly-upper", name:"Cable fly (upper)", bodyweight:false, muscle:"bryst"},
+    {id:"cable-fly-mid", name:"Cable fly (mid)", bodyweight:false, muscle:"bryst"},
+    {id:"military-press-dumbbell", name:"Military press (dumbbell)", bodyweight:false, muscle:"forskulder"},
+    {id:"lateral-raise-lying", name:"Lateral raise (lying)", bodyweight:false, muscle:"sideskulder"},
+    {id:"bayesian-cable-curl", name:"Bayesian cable curl", bodyweight:false, muscle:"biceps"},
+    {id:"hammer-curl-preacher", name:"Hammer curl (preacher/iso)", bodyweight:false, muscle:"biceps"}
   ];
   saveEx(EX);
 
@@ -563,6 +585,20 @@ function renderLog(){
   attachLogFormHandlers();
 }
 
+function muscleSelectHtml(selectedMuscle, selectId){
+  var html = '<select id="'+(selectId||"newExMuscle")+'" style="width:100%;padding:12px;border-radius:10px;background:var(--card2,#1c1c1f);color:var(--text);border:1px solid var(--border);font-size:15px;">';
+  html += '<option value="">Vælg muskelgruppe…</option>';
+  MUSCLE_GROUPS_BY_DAY.forEach(function(grp){
+    html += '<optgroup label="'+escapeHtml(grp.title)+'">';
+    grp.muscles.forEach(function(m){
+      html += '<option value="'+m+'"'+(m===selectedMuscle?' selected':'')+'>'+MUSCLE_LABELS[m]+'</option>';
+    });
+    html += '</optgroup>';
+  });
+  html += '</select>';
+  return html;
+}
+
 function openAddExerciseModal(prefillName){
   var html = '<h3>Tilføj ny øvelse</h3>'+
     '<div class="field"><label class="field-label">Navn</label><input type="text" id="newExName" value="'+escapeHtml(prefillName||"")+'"></div>'+
@@ -571,6 +607,7 @@ function openAddExerciseModal(prefillName){
     '<div class="toggle-opt selected" data-bw="0">Vægt/maskine</div>'+
     '<div class="toggle-opt" data-bw="1">Kropsvægt</div>'+
     '</div></div>'+
+    '<div class="field"><label class="field-label">Muskelgruppe (bruges til "Foreslået i dag")</label>'+muscleSelectHtml(null)+'</div>'+
     '<button class="btn primary" id="saveNewEx">Gem øvelse</button>';
   openModal(html);
   var bwVal = 0;
@@ -584,11 +621,12 @@ function openAddExerciseModal(prefillName){
   document.getElementById("saveNewEx").addEventListener("click", function(){
     var name = document.getElementById("newExName").value.trim();
     if(!name){ showToast("Skriv et navn"); return; }
+    var muscle = document.getElementById("newExMuscle").value || null;
     var list = loadEx();
     var id = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") || uid("ex");
     var uniqueId = id, n=2;
     while(list.some(function(e){return e.id===uniqueId;})){ uniqueId = id+"-"+n; n++; }
-    list.push({id:uniqueId, name:name, bodyweight: bwVal===1});
+    list.push({id:uniqueId, name:name, bodyweight: bwVal===1, muscle: muscle});
     saveEx(list);
     logDraft.exerciseId = uniqueId;
     logDraft.musclePos = "1-2";
@@ -601,6 +639,14 @@ function openAddExerciseModal(prefillName){
   });
 }
 
+function prevSetWeightToday(exId, setNum){
+  if(setNum<=1) return null;
+  var todays = loadLogs().filter(function(l){return l.exerciseId===exId && l.date===todayISO();});
+  var prev = todays.find(function(l){return l.setNumber===setNum-1;});
+  if(!prev || prev.weight===null || prev.weight===undefined) return null;
+  return prev.weight;
+}
+
 function nextSetNumberForToday(exId){
   var todays = loadLogs().filter(function(l){return l.exerciseId===exId && l.date===todayISO();});
   return todays.length+1;
@@ -609,27 +655,25 @@ function nextSetNumberForToday(exId){
 function getTodayDayContext(){
   var todayLogs = loadLogs().filter(function(l){ return l.date===todayISO(); });
   if(todayLogs.length===0) return null;
-  var programs = loadPrograms();
+  var exList = loadEx();
   for(var i=0;i<todayLogs.length;i++){
-    var exId = todayLogs[i].exerciseId;
-    for(var key in programs){
-      var p = programs[key];
-      if(p.a.indexOf(exId)!==-1 || p.b.indexOf(exId)!==-1){
-        return p;
-      }
+    var exObj = exList.find(function(e){ return e.id===todayLogs[i].exerciseId; });
+    if(exObj && exObj.muscle){
+      var day = dayGroupForMuscle(exObj.muscle);
+      if(day) return day;
     }
   }
   return null;
 }
 
 function getSuggestedExercises(){
-  var dayCtx = getTodayDayContext();
-  if(!dayCtx) return [];
-  var poolIds = [];
-  dayCtx.a.concat(dayCtx.b).forEach(function(id){ if(poolIds.indexOf(id)===-1) poolIds.push(id); });
+  var day = getTodayDayContext();
+  if(!day) return [];
   var todayLoggedIds = {};
   loadLogs().filter(function(l){return l.date===todayISO();}).forEach(function(l){ todayLoggedIds[l.exerciseId]=true; });
-  return poolIds.filter(function(id){ return !todayLoggedIds[id]; }).map(function(id){ return getExerciseById(id); }).filter(Boolean);
+  return loadEx().filter(function(e){
+    return e.muscle && dayGroupForMuscle(e.muscle)===day && !todayLoggedIds[e.id];
+  });
 }
 
 function renderLogForm(exObj){
@@ -653,10 +697,12 @@ function renderLogForm(exObj){
   }
   html += '<div class="muted" style="margin-bottom:10px;">Sæt '+setNum+' i dag</div>';
 
+  var prevWeight = prevSetWeightToday(exObj.id, setNum);
+  var weightValAttr = prevWeight!==null ? ' value="'+prevWeight+'"' : '';
   if(exObj.bodyweight){
-    html += '<div class="field"><label class="field-label">Ekstra vægt (kg) — lad stå tom hvis ren kropsvægt</label><input type="text" inputmode="decimal" id="logWeight" placeholder="fx 10"></div>';
+    html += '<div class="field"><label class="field-label">Ekstra vægt (kg) — lad stå tom hvis ren kropsvægt</label><input type="text" inputmode="decimal" id="logWeight" placeholder="fx 10"'+weightValAttr+'></div>';
   } else {
-    html += '<div class="field"><label class="field-label">Vægt (kg)</label><input type="text" inputmode="decimal" id="logWeight" placeholder="fx 22.5"></div>';
+    html += '<div class="field"><label class="field-label">Vægt (kg)</label><input type="text" inputmode="decimal" id="logWeight" placeholder="fx 22.5"'+weightValAttr+'></div>';
   }
   html += '<div class="field"><label class="field-label">Reps</label>';
   if(logDraft.repsMode==="text"){
@@ -695,6 +741,7 @@ function openEditExerciseModal(exId, onSaved){
     '<div class="toggle-opt'+(!exObj.bodyweight?' selected':'')+'" data-bw="0">Vægt/maskine</div>'+
     '<div class="toggle-opt'+(exObj.bodyweight?' selected':'')+'" data-bw="1">Kropsvægt</div>'+
     '</div></div>'+
+    '<div class="field"><label class="field-label">Muskelgruppe (bruges til "Foreslået i dag")</label>'+muscleSelectHtml(exObj.muscle||null, "editExMuscle")+'</div>'+
     '<button class="btn primary" id="saveRenameEx">Gem</button>';
   openModal(html);
   var bwVal = exObj.bodyweight ? 1 : 0;
@@ -708,11 +755,13 @@ function openEditExerciseModal(exId, onSaved){
   document.getElementById("saveRenameEx").addEventListener("click", function(){
     var newName = document.getElementById("editExName").value.trim();
     if(!newName){ showToast("Skriv et navn"); return; }
+    var muscle = document.getElementById("editExMuscle").value || null;
     var list = loadEx();
     var item = list.find(function(e){ return e.id===exId; });
     if(item){
       item.name = newName;
       item.bodyweight = bwVal===1;
+      item.muscle = muscle;
       saveEx(list);
     }
     closeModal();
@@ -722,6 +771,11 @@ function openEditExerciseModal(exId, onSaved){
 }
 
 function attachLogFormHandlers(){
+  var weightInput = document.getElementById("logWeight");
+  if(weightInput){
+    weightInput.addEventListener("focus", function(){ weightInput.select(); });
+  }
+
   var clearBtn = document.getElementById("clearExBtn");
   if(clearBtn) clearBtn.addEventListener("click", function(){ logDraft.exerciseId=null; logDraft.musclePos="1-2"; logDraft.repsMode="wheel"; logDraft.wheelValue=8; logDraft.textValue=""; renderLog(); });
 
@@ -1241,6 +1295,37 @@ function runMigrations(){
       saveLogs(logs);
     }
     localStorage.setItem("jernlog_migration_ezbarcurls_v1", "1");
+  }
+
+  if(!localStorage.getItem("jernlog_migration_muscle_v1")){
+    var idToMuscle = {
+      "weighted-pull-ups":"ryg","chest-supported-row-neutral":"ryg","chest-supported-row-wide":"ryg",
+      "rear-delt-flyes-cable":"bagskulder","pec-deck-rear-delt":"bagskulder",
+      "one-arm-cable-pushdown":"tricep","dumbbell-skullcrushers":"tricep",
+      "chin-ups":"ryg","bent-over-rows":"ryg","close-grip-lat-pulldown":"ryg","wide-grip-lat-pulldown":"ryg",
+      "rear-delt-flyes-single":"bagskulder",
+      "barbell-skullcrushers":"tricep","rope-pushdown-cable":"tricep","single-arm-tricep-pushdown":"tricep",
+      "leg-extension":"ben","squat":"ben","hamstring-curl":"ben","barbell-rdl":"ben",
+      "hip-abduction-adduction":"ben","calf-raise":"ben","bulgarian-split-squat":"ben","pendulum-squat":"ben","calf-raise-seated":"ben",
+      "leg-raises":"mave","cable-crunches":"mave","machine-crunches":"mave",
+      "bench-press":"bryst","incline-smith-press":"bryst","pec-deck":"bryst","incline-dumbbell-press":"bryst",
+      "dips":"bryst","cable-fly-upper":"bryst","cable-fly-mid":"bryst",
+      "lateral-raise-cable-single":"sideskulder","lateral-raise-lying":"sideskulder",
+      "shoulder-press-barbell":"forskulder","military-press-dumbbell":"forskulder",
+      "incline-dumbbell-curl":"biceps","dumbbell-preacher-machine":"biceps","ez-bar-curl":"biceps",
+      "bayesian-cable-curl":"biceps","hammer-curl-preacher":"biceps",
+      "ez-bar-curls":"biceps"
+    };
+    var exList2 = loadEx();
+    var changed = false;
+    exList2.forEach(function(e){
+      if(!e.muscle && idToMuscle[e.id]){
+        e.muscle = idToMuscle[e.id];
+        changed = true;
+      }
+    });
+    if(changed) saveEx(exList2);
+    localStorage.setItem("jernlog_migration_muscle_v1", "1");
   }
 }
 
