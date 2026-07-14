@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#101012">
 <link rel="apple-touch-icon" href="icon-180-v3.png">
 <title>Master Matteos Jernlog</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root{
     --bg:#101012;
@@ -40,12 +41,13 @@
   /* Dropdown menu */
   .menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:none;}
   .menu-overlay.open{display:block;}
-  .menu-panel{position:absolute;top:calc(70px + env(safe-area-inset-top));right:16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;min-width:220px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
+  .menu-panel{position:absolute;top:calc(70px + env(safe-area-inset-top));right:16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;min-width:240px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
   .menu-item{display:flex;align-items:center;gap:12px;padding:16px 18px;font-size:16px;font-weight:600;border-bottom:1px solid var(--border);}
   .menu-item:last-child{border-bottom:none;}
   .menu-item:active{background:var(--bg-card);}
   .menu-item .ic{font-size:18px;width:22px;text-align:center;}
   .menu-item.active{color:var(--yellow);}
+  .menu-item .req-dot{margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;}
 
   main{padding:16px;}
 
@@ -62,7 +64,7 @@
   .btn.small{padding:10px 14px;font-size:14px;width:auto;}
   .row{display:flex;gap:10px;}
   .row > *{flex:1;}
-  input[type=text], input[type=number]{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:14px;border-radius:12px;font-size:16px;}
+  input[type=text], input[type=number], input[type=email], input[type=password]{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:14px;border-radius:12px;font-size:16px;}
   input:focus{outline:none;border-color:var(--yellow);}
   label.field-label{display:block;font-size:13px;color:var(--text-dim);margin-bottom:6px;font-weight:600;}
   .field{margin-bottom:14px;}
@@ -89,7 +91,7 @@
   .trend.same{color:var(--text-dim);}
 
   /* Toast */
-  .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--red);color:#fff;padding:14px 20px;border-radius:14px;font-weight:800;font-size:15px;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:200;display:none;}
+  .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--red);color:#fff;padding:14px 20px;border-radius:14px;font-weight:800;font-size:15px;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:200;display:none;max-width:90vw;text-align:center;}
   .toast.show{display:block;animation:pop 0.25s ease-out;}
   @keyframes pop{from{transform:translate(-50%,10px);opacity:0;}to{transform:translate(-50%,0);opacity:1;}}
 
@@ -140,21 +142,87 @@
   .reps-pad{flex:0 0 calc(50% - 28px);}
   .reps-picker-indicator{position:absolute;left:50%;top:4px;bottom:4px;width:56px;margin-left:-28px;border-top:2px solid var(--yellow);border-bottom:2px solid var(--yellow);pointer-events:none;border-radius:6px;}
   .mode-toggle-link{text-align:center;font-size:13px;color:var(--yellow);font-weight:700;padding:8px 0 2px;}
+
+  /* Login */
+  .login-wrap{padding:30px 4px 10px;}
+  .login-logo{text-align:center;font-size:40px;margin-bottom:6px;}
+  .login-title{text-align:center;font-size:22px;font-weight:800;color:var(--yellow);margin-bottom:4px;}
+  .login-sub{text-align:center;color:var(--text-dim);font-size:14px;margin-bottom:22px;}
+  .login-switch{text-align:center;color:var(--yellow);font-weight:700;font-size:14px;padding:14px 0 4px;}
+
+  /* Feed */
+  .feed-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px;}
+  .feed-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .avatar{width:38px;height:38px;border-radius:50%;background:var(--yellow);color:#141400;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;flex:0 0 38px;}
+  .feed-who{font-weight:800;font-size:15px;}
+  .feed-when{color:var(--text-dim);font-size:12px;}
+  .feed-ex-line{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+  .feed-ex-line:last-child{border-bottom:none;}
+  .feed-ex-name{font-weight:700;font-size:14px;}
+  .feed-ex-sets{color:var(--text-dim);font-size:13px;text-align:right;flex-shrink:0;max-width:55%;}
+  .comment-line{display:flex;gap:8px;padding:7px 0;font-size:14px;align-items:baseline;}
+  .comment-author{font-weight:800;color:var(--yellow);flex-shrink:0;}
+  .comment-body{word-break:break-word;}
+  .comment-input-row{display:flex;gap:8px;margin-top:10px;}
+  .comment-input-row input{flex:1;padding:11px 14px;font-size:15px;}
+  .comment-send{background:var(--yellow);color:#141400;border:none;border-radius:12px;font-weight:800;font-size:14px;padding:0 16px;}
+
+  /* Friends */
+  .friend-status{font-size:12px;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:3px 8px;}
+  .pill-btn{background:var(--yellow);color:#141400;border:none;border-radius:10px;font-weight:800;font-size:13px;padding:9px 14px;}
+  .pill-btn.ghost{background:transparent;color:var(--red);border:1px solid var(--red);}
+  .pill-btn.dim{background:var(--bg-elevated);color:var(--text-dim);border:1px solid var(--border);}
+
+  /* Kalender */
+  .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .cal-title{font-weight:800;font-size:16px;}
+  .cal-sub{font-size:12px;color:var(--text-dim);}
+  .cal-nav{display:flex;gap:8px;}
+  .cal-nav button{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;font-size:17px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .cal-dow{text-align:center;font-size:11px;color:var(--text-dim);font-weight:700;padding:2px 0;}
+  .cal-day{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:13px;color:var(--text-dim);background:var(--bg-elevated);border:1px solid transparent;}
+  .cal-day.out{visibility:hidden;}
+  .cal-day.trained{background:var(--yellow);color:#141400;font-weight:800;}
+  .cal-day.today{border-color:var(--yellow);}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .stat-box{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;}
+  .stat-num{font-size:22px;font-weight:800;color:var(--yellow);}
+  .stat-label{font-size:11px;color:var(--text-dim);margin-top:2px;}
+
+  /* Live-badge i feed */
+  .live-badge{background:var(--green);color:#0b2b1c;font-size:12px;font-weight:800;padding:3px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:#0b2b1c;animation:blink 1.2s infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.25;}}
+
+  /* Kommentar-side */
+  .conv-title{font-weight:800;font-size:14px;margin-bottom:2px;}
+  .conv-when{color:var(--text-dim);font-size:12px;margin-bottom:8px;}
+  .new-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-left:6px;}
+
+  /* Hvordan-links på øvelsesside */
+  .howto-row{display:flex;gap:10px;margin:10px 0 14px;}
+  .howto-link{flex:1;text-align:center;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:11px 8px;color:var(--yellow);font-weight:700;font-size:13px;text-decoration:none;}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <header class="topbar">
     <div class="title" id="appTitleBtn" style="cursor:pointer;"><span class="dot"></span> Master Matteos Jernlog</div>
-    <button class="menu-btn" id="menuBtn">☰</button>
+    <button class="menu-btn" id="menuBtn" style="display:none;">☰</button>
   </header>
 
   <div class="menu-overlay" id="menuOverlay">
     <div class="menu-panel">
       <div class="menu-item" data-view="log"><span class="ic">🏋️</span> Log øvelse</div>
+      <div class="menu-item" data-view="feed"><span class="ic">📣</span> Feed</div>
       <div class="menu-item" data-view="history"><span class="ic">📈</span> Historik/Statistik</div>
-      <div class="menu-item" data-view="programs"><span class="ic">📋</span> Programmer</div>
+      <div class="menu-item" data-view="exercises"><span class="ic">📋</span> Øvelser</div>
+      <div class="menu-item" data-view="calendar"><span class="ic">📅</span> Kalender</div>
       <div class="menu-item" data-view="wins"><span class="ic">🔥</span> Wins & Plateaus</div>
+      <div class="menu-item" data-view="comments"><span class="ic">💬</span> Kommentarer <span class="req-dot" id="commentDot" style="display:none;">0</span></div>
+      <div class="menu-item" data-view="friends"><span class="ic">👥</span> Venner <span class="req-dot" id="friendReqDot" style="display:none;">0</span></div>
+      <div class="menu-item" id="menuLogout"><span class="ic">🚪</span> Log ud <span class="muted" id="menuUser" style="margin-left:auto;font-size:12px;"></span></div>
     </div>
   </div>
 
@@ -171,17 +239,33 @@
 (function(){
 "use strict";
 
-/* ---------------- Data helpers ---------------- */
-var LS_EX = "jernlog_exercises";
-var LS_LOGS = "jernlog_logs";
-var LS_PROGRAMS = "jernlog_programs";
-var LS_SEEDED = "jernlog_seeded_v1";
+/* ================= Supabase (cloud backend) ================= */
+var SUPA_URL = "https://knzhotszdmfshdndweft.supabase.co";
+var SUPA_KEY = "sb_publishable_91afG0eQt8eK07N1jXRruQ_eE8LLgPc";
+/* Kun denne konto får tilbudt engangs-flytning af gamle lokale data til skyen: */
+var MIGRATION_OWNER_EMAIL = "matteoverdiani.dk@gmail.com";
 
-/* Muskelgrupper -> hvilken træningsdag (1,2,3) de hører til.
-   Bruges til "Foreslået i dag": når du logger din første øvelse,
-   findes dens muskelgruppe, og alle andre øvelser med muskelgruppe
-   fra samme dag bliver foreslået — uanset om det er en fast eller
-   en selv-tilføjet øvelse. */
+var sb = null;
+try{
+  sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+}catch(e){ /* håndteres i boot() */ }
+
+/* Session/bruger-state */
+var session = null;    // supabase auth session
+var myProfile = null;  // {id, username}
+var memEx = [];        // egne øvelser (app-format)
+var memLogs = [];      // egne logs (app-format)
+
+/* Cache af en vens data når man kigger på deres profil */
+var friendCache = null; // {userId, username, ex:[], logs:[]}
+
+/* ---------------- Data helpers ---------------- */
+var LS_EX = "jernlog_exercises";        // bruges KUN til engangs-migrering af gamle lokale data
+var LS_LOGS = "jernlog_logs";           // (samme)
+var LS_PROGRAMS = "jernlog_programs";   // programmer er stadig lokale (statisk reference)
+var LS_PENDING = "jernlog_pending_snapshot"; // nød-backup hvis et cloud-gem fejler
+
+/* Muskelgrupper -> hvilken træningsdag (1,2,3) de hører til. */
 var MUSCLE_DAY = {
   "ryg":1, "bagskulder":1, "tricep":1,
   "ben":2, "mave":2,
@@ -192,14 +276,15 @@ var MUSCLE_LABELS = {
   "ben":"Ben", "mave":"Mave",
   "bryst":"Bryst", "sideskulder":"Sideskulder", "forskulder":"Forskulder", "biceps":"Biceps"
 };
+/* Rækkefølgen her styrer også Øvelser-sidens sektioner (Ryg → Bryst → Ben) */
 var MUSCLE_GROUPS_BY_DAY = [
-  {day:1, title:"Dag 1 — Ryg & Triceps", muscles:["ryg","bagskulder","tricep"]},
-  {day:2, title:"Dag 2 — Ben & Mave", muscles:["ben","mave"]},
-  {day:3, title:"Dag 3 — Bryst, Skulder & Biceps", muscles:["bryst","sideskulder","forskulder","biceps"]}
+  {day:1, title:"Ryg, Bagskulder & Tricep", muscles:["ryg","bagskulder","tricep"]},
+  {day:3, title:"Bryst, Skulder & Biceps", muscles:["bryst","sideskulder","forskulder","biceps"]},
+  {day:2, title:"Ben & Mave", muscles:["ben","mave"]}
 ];
 function dayGroupForMuscle(muscle){ return MUSCLE_DAY[muscle] || null; }
 
-function uid(prefix){ return prefix + "_" + Math.random().toString(36).slice(2,9); }
+function uid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,9); }
 function todayISO(){ var d=new Date(); return d.toISOString().slice(0,10); }
 function fmtDateDisplay(iso){
   var today = todayISO();
@@ -209,6 +294,11 @@ function fmtDateDisplay(iso){
   var d = new Date(iso+"T00:00:00");
   var months = ["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
   return d.getDate()+". "+months[d.getMonth()]+" "+d.getFullYear();
+}
+function fmtClock(ms){
+  var d = new Date(ms);
+  function p(n){ return (n<10?"0":"")+n; }
+  return p(d.getHours())+":"+p(d.getMinutes());
 }
 function parseWeight(str){
   if(str===null||str===undefined||str==="") return null;
@@ -234,143 +324,132 @@ function parseReps(raw){
   return null;
 }
 
-function loadEx(){ try{ return JSON.parse(localStorage.getItem(LS_EX))||[]; }catch(e){ return []; } }
-function saveEx(list){ localStorage.setItem(LS_EX, JSON.stringify(list)); }
-function loadLogs(){ try{ return JSON.parse(localStorage.getItem(LS_LOGS))||[]; }catch(e){ return []; } }
-function saveLogs(list){ localStorage.setItem(LS_LOGS, JSON.stringify(list)); }
+/* ---------- Egne data: læses fra hukommelsen (hentet fra skyen ved start) ---------- */
+function loadEx(){ return memEx; }
+function loadLogs(){ return memLogs; }
 function loadPrograms(){ try{ return JSON.parse(localStorage.getItem(LS_PROGRAMS))||null; }catch(e){ return null; } }
-function savePrograms(p){ localStorage.setItem(LS_PROGRAMS, JSON.stringify(p)); }
 
-function getExerciseById(id){ return loadEx().find(function(e){return e.id===id;}); }
+function getExerciseById(id){
+  var list = (state.viewUser && friendCache && friendCache.userId===state.viewUser) ? friendCache.ex : memEx;
+  return list.find(function(e){return e.id===id;});
+}
 
-/* ---------------- Seed data (fra Matteo-fanen) ---------------- */
-function seedIfNeeded(){
-  if(localStorage.getItem(LS_SEEDED)) return;
+/* ---------- Mapping mellem app-format og database-rækker ---------- */
+function exToRow(e){
+  return { user_id: session.user.id, id: e.id, name: e.name, bodyweight: !!e.bodyweight, muscle: e.muscle||null, variant: e.variant||null };
+}
+function rowToEx(r){
+  return { id: r.id, name: r.name, bodyweight: !!r.bodyweight, muscle: r.muscle||null, variant: r.variant||null };
+}
+function logToRow(l){
+  return {
+    user_id: session.user.id,
+    id: l.id,
+    exercise_id: l.exerciseId,
+    date: l.date,
+    logged_at: (l.loggedAt!==undefined && l.loggedAt!==null) ? new Date(l.loggedAt).toISOString() : new Date(l.date+"T12:00:00Z").toISOString(),
+    set_number: l.setNumber,
+    weight: (l.weight===undefined||l.weight===null) ? null : l.weight,
+    reps: (l.reps===undefined||l.reps===null) ? null : l.reps,
+    reps_label: l.repsLabel!==undefined && l.repsLabel!==null ? String(l.repsLabel) : null,
+    muscle_pos: l.musclePos || "1-2",
+    skipped: !!l.skipped
+  };
+}
+function rowToLog(r){
+  return {
+    id: r.id,
+    exerciseId: r.exercise_id,
+    date: r.date,
+    loggedAt: r.logged_at ? Date.parse(r.logged_at) : null,
+    setNumber: r.set_number,
+    weight: (r.weight===null||r.weight===undefined) ? null : parseFloat(r.weight),
+    reps: (r.reps===null||r.reps===undefined) ? null : parseFloat(r.reps),
+    repsLabel: r.reps_label,
+    musclePos: r.muscle_pos || "1-2",
+    skipped: !!r.skipped
+  };
+}
 
-  var EX = [
-    {id:"weighted-pull-ups", name:"Weighted pull-ups", bodyweight:true, muscle:"ryg"},
-    {id:"chest-supported-row-neutral", name:"Chest-supported row (neutral grip)", bodyweight:false, muscle:"ryg"},
-    {id:"chest-supported-row-wide", name:"Chest-supported row (wide grip)", bodyweight:false, muscle:"ryg"},
-    {id:"rear-delt-flyes-cable", name:"Rear delt flyes (cable)", bodyweight:false, muscle:"bagskulder"},
-    {id:"pec-deck-rear-delt", name:"Pec deck rear delt", bodyweight:false, muscle:"bagskulder"},
-    {id:"one-arm-cable-pushdown", name:"One-arm cable pushdown", bodyweight:false, muscle:"tricep"},
-    {id:"dumbbell-skullcrushers", name:"Dumbbell skullcrushers", bodyweight:false, muscle:"tricep"},
-    {id:"chin-ups", name:"Chin-ups", bodyweight:true, muscle:"ryg"},
-    {id:"bent-over-rows", name:"Bent-over rows", bodyweight:false, muscle:"ryg"},
-    {id:"close-grip-lat-pulldown", name:"Close-grip lat pulldown", bodyweight:false, muscle:"ryg"},
-    {id:"wide-grip-lat-pulldown", name:"Wide-grip lat pulldown", bodyweight:false, muscle:"ryg"},
-    {id:"rear-delt-flyes-single", name:"Rear delt flyes (single arm)", bodyweight:false, muscle:"bagskulder"},
-    {id:"barbell-skullcrushers", name:"Barbell skullcrushers", bodyweight:false, muscle:"tricep"},
-    {id:"rope-pushdown-cable", name:"Rope pushdown (cable)", bodyweight:false, muscle:"tricep"},
-    {id:"single-arm-tricep-pushdown", name:"Single-arm tricep pushdown", bodyweight:false, muscle:"tricep"},
-    {id:"leg-extension", name:"Leg extension", bodyweight:false, muscle:"ben"},
-    {id:"squat", name:"Squat", bodyweight:false, muscle:"ben"},
-    {id:"hamstring-curl", name:"Hamstring curl", bodyweight:false, muscle:"ben"},
-    {id:"barbell-rdl", name:"Barbell RDL", bodyweight:false, muscle:"ben"},
-    {id:"hip-abduction-adduction", name:"Hip abduction/adduction machine", bodyweight:false, muscle:"ben"},
-    {id:"calf-raise", name:"Calf raise", bodyweight:false, muscle:"ben"},
-    {id:"leg-raises", name:"Leg raises", bodyweight:true, muscle:"mave"},
-    {id:"cable-crunches", name:"Cable crunches", bodyweight:false, muscle:"mave"},
-    {id:"bulgarian-split-squat", name:"Bulgarian split squat", bodyweight:false, muscle:"ben"},
-    {id:"pendulum-squat", name:"Pendulum squat", bodyweight:false, muscle:"ben"},
-    {id:"calf-raise-seated", name:"Calf raise (seated)", bodyweight:false, muscle:"ben"},
-    {id:"machine-crunches", name:"Machine crunches", bodyweight:false, muscle:"mave"},
-    {id:"bench-press", name:"Bench press", bodyweight:false, muscle:"bryst"},
-    {id:"incline-smith-press", name:"Incline smith machine press", bodyweight:false, muscle:"bryst"},
-    {id:"pec-deck", name:"Pec deck", bodyweight:false, muscle:"bryst"},
-    {id:"lateral-raise-cable-single", name:"Lateral raise (cable, single arm)", bodyweight:false, muscle:"sideskulder"},
-    {id:"shoulder-press-barbell", name:"Shoulder press (barbell)", bodyweight:false, muscle:"forskulder"},
-    {id:"incline-dumbbell-curl", name:"Incline dumbbell curl", bodyweight:false, muscle:"biceps"},
-    {id:"dumbbell-preacher-machine", name:"Dumbbell preacher curl (machine)", bodyweight:false, muscle:"biceps"},
-    {id:"ez-bar-curl", name:"EZ-bar curl (overhand)", bodyweight:false, muscle:"biceps"},
-    {id:"incline-dumbbell-press", name:"Incline dumbbell press", bodyweight:false, muscle:"bryst"},
-    {id:"dips", name:"Dips", bodyweight:true, muscle:"bryst"},
-    {id:"cable-fly-upper", name:"Cable fly (upper)", bodyweight:false, muscle:"bryst"},
-    {id:"cable-fly-mid", name:"Cable fly (mid)", bodyweight:false, muscle:"bryst"},
-    {id:"military-press-dumbbell", name:"Military press (dumbbell)", bodyweight:false, muscle:"forskulder"},
-    {id:"lateral-raise-lying", name:"Lateral raise (lying)", bodyweight:false, muscle:"sideskulder"},
-    {id:"bayesian-cable-curl", name:"Bayesian cable curl", bodyweight:false, muscle:"biceps"},
-    {id:"hammer-curl-preacher", name:"Hammer curl (preacher/iso)", bodyweight:false, muscle:"biceps"}
-  ];
-  saveEx(EX);
+/* ---------- Cloud-sync: saveEx/saveLogs finder selv ændringer og skubber dem op ---------- */
+function diffById(newList, oldList){
+  var oldById = {};
+  oldList.forEach(function(x){ oldById[x.id] = JSON.stringify(x); });
+  var newIds = {};
+  newList.forEach(function(x){ newIds[x.id] = true; });
+  var upserts = newList.filter(function(x){ return oldById[x.id] !== JSON.stringify(x); });
+  var dels = oldList.filter(function(x){ return !newIds[x.id]; }).map(function(x){ return x.id; });
+  return { upserts: upserts, dels: dels };
+}
+function persistPendingSnapshot(){
+  try{ localStorage.setItem(LS_PENDING, JSON.stringify({ex: memEx, logs: memLogs, t: Date.now()})); }catch(e){}
+}
+function pushChanges(table, changes, toRowFn){
+  var ops = [];
+  if(changes.upserts.length) ops.push(sb.from(table).upsert(changes.upserts.map(toRowFn)));
+  if(changes.dels.length) ops.push(sb.from(table).delete().eq("user_id", session.user.id).in("id", changes.dels));
+  if(!ops.length) return;
+  Promise.all(ops).then(function(results){
+    var bad = results.filter(function(r){ return r && r.error; });
+    if(bad.length){
+      persistPendingSnapshot();
+      showToast("⚠ Kunne ikke gemme i skyen — prøver igen næste gang");
+    }
+  }).catch(function(){
+    persistPendingSnapshot();
+    showToast("⚠ Kunne ikke gemme i skyen — prøver igen næste gang");
+  });
+}
+function saveEx(list){
+  var changes = diffById(list, memEx);
+  memEx = list;
+  pushChanges("exercises", changes, exToRow);
+}
+function saveLogs(list){
+  var changes = diffById(list, memLogs);
+  memLogs = list;
+  pushChanges("logs", changes, logToRow);
+}
 
-  var seedDate = "2026-06-15";
-  var seedDate2 = "2026-06-18";
-  var LOGS = [];
-  function addSession(exId, date, sets){
-    // sets: [{weight, reps, label}] weight=extraKg for bodyweight exercises
-    sets.forEach(function(s, i){
-      LOGS.push({
-        id: uid("log"),
-        exerciseId: exId,
-        date: date,
-        setNumber: i+1,
-        weight: s.weight===undefined? null : s.weight,
-        reps: s.reps,
-        repsLabel: s.label || String(s.reps),
-        musclePos: "1-2"
+/* Hvis et cloud-gem fejlede tidligere, ligger der en nød-backup — skub den op igen */
+function flushPendingSnapshot(){
+  var raw = null;
+  try{ raw = localStorage.getItem(LS_PENDING); }catch(e){}
+  if(!raw) return Promise.resolve();
+  var snap;
+  try{ snap = JSON.parse(raw); }catch(e){ localStorage.removeItem(LS_PENDING); return Promise.resolve(); }
+  return upsertChunks("exercises", (snap.ex||[]).map(exToRow))
+    .then(function(){ return upsertChunks("logs", (snap.logs||[]).map(logToRow)); })
+    .then(function(){ try{ localStorage.removeItem(LS_PENDING); }catch(e){} })
+    .catch(function(){ /* stadig offline — prøver igen næste gang */ });
+}
+function upsertChunks(table, rows){
+  var p = Promise.resolve();
+  for(var i=0; i<rows.length; i+=200){
+    (function(slice){
+      p = p.then(function(){
+        return sb.from(table).upsert(slice).then(function(res){
+          if(res.error) throw res.error;
+        });
       });
+    })(rows.slice(i, i+200));
+  }
+  return p;
+}
+
+/* Hent ALLE rækker (PostgREST giver max 1000 ad gangen) */
+function fetchAllRows(makeQuery){
+  var all = [];
+  var size = 1000;
+  function page(n){
+    return makeQuery().range(n*size, n*size+size-1).then(function(res){
+      if(res.error) throw res.error;
+      all = all.concat(res.data||[]);
+      if(res.data && res.data.length===size) return page(n+1);
+      return all;
     });
   }
-
-  addSession("weighted-pull-ups", seedDate, [{weight:0,reps:11,label:"10-11"},{weight:0,reps:8,label:"8"},{weight:0,reps:6,label:"6"}]);
-  addSession("chest-supported-row-neutral", seedDate, [{weight:30,reps:8,label:"8"},{weight:30,reps:8,label:"7-8"}]);
-  addSession("chest-supported-row-wide", seedDate, [{weight:25,reps:7,label:"7 ca"},{weight:25,reps:6,label:"6 ca"}]);
-  addSession("rear-delt-flyes-cable", seedDate, [{weight:15.5,reps:9,label:"5-9"},{weight:15.5,reps:6,label:"4-6"}]);
-  addSession("pec-deck-rear-delt", seedDate, [{weight:3,reps:10,label:"10"},{weight:3,reps:10,label:"10"}]);
-  addSession("one-arm-cable-pushdown", seedDate, [{weight:26.5,reps:9,label:"9"},{weight:26.5,reps:6,label:"6"}]);
-  addSession("dumbbell-skullcrushers", seedDate, [{weight:9,reps:10,label:"10"},{weight:9,reps:9,label:"7-9"}]);
-
-  addSession("chin-ups", seedDate, [{weight:0,reps:10,label:"10"},{weight:0,reps:10,label:"10"}]);
-  addSession("bent-over-rows", seedDate, [{weight:55,reps:9,label:"6-9"},{weight:55,reps:7,label:"7"}]);
-  addSession("close-grip-lat-pulldown", seedDate, [{weight:59.5,reps:10,label:"10"},{weight:65,reps:7,label:"6-7"},{weight:65,reps:7,label:"7"}]);
-  addSession("wide-grip-lat-pulldown", seedDate, [{weight:54,reps:9,label:"7-9"},{weight:54,reps:6,label:"6"}]);
-  addSession("rear-delt-flyes-single", seedDate, [{weight:21,reps:5,label:"5"},{weight:15.5,reps:10,label:"8-10"}]);
-  addSession("barbell-skullcrushers", seedDate, [{weight:25,reps:7,label:"6-7"},{weight:25,reps:6,label:"5-6"}]);
-  addSession("rope-pushdown-cable", seedDate, [{weight:43,reps:7,label:"7"},{weight:37.5,reps:6,label:"6"}]);
-  addSession("single-arm-tricep-pushdown", seedDate, [{weight:26.5,reps:9,label:"9"},{weight:26.5,reps:6,label:"6"}]);
-
-  addSession("hamstring-curl", seedDate, [{weight:43,reps:8,label:"6-8"},{weight:37.5,reps:7,label:"5-7"}]);
-  addSession("barbell-rdl", seedDate, [{weight:80,reps:10,label:"10"},{weight:80,reps:10,label:"10"}]);
-  addSession("leg-extension", seedDate, [{weight:59.5,reps:10,label:"10"},{weight:59.5,reps:9,label:"9"}]);
-  addSession("calf-raise-seated", seedDate, [{weight:30,reps:10,label:"8-10"},{weight:30,reps:7,label:"6-7"}]);
-  addSession("leg-raises", seedDate, [{weight:0,reps:9,label:"8-9"},{weight:0,reps:6,label:"4-6"}]);
-  addSession("machine-crunches", seedDate, [{weight:4,reps:10,label:"10"},{weight:4,reps:10,label:"10"}]);
-
-  addSession("bench-press", seedDate, [{weight:70,reps:5,label:"5"},{weight:60,reps:7,label:"6-7"}]);
-  addSession("incline-smith-press", seedDate, [{weight:25,reps:5,label:"4-5"},{weight:20,reps:7,label:"6-7"},{weight:20,reps:6,label:"5-6"}]);
-  addSession("lateral-raise-cable-single", seedDate, [{weight:15.5,reps:9,label:"8-9"},{weight:15.5,reps:7,label:"6-7"},{weight:15.5,reps:6,label:"6"}]);
-  addSession("shoulder-press-barbell", seedDate, [{weight:20,reps:4,label:"4"}]);
-  addSession("incline-dumbbell-curl", seedDate, [{weight:14,reps:7,label:"7"},{weight:12,reps:8,label:"7-8"},{weight:12,reps:5,label:"4-5"}]);
-  addSession("dumbbell-preacher-machine", seedDate, [{weight:6,reps:10,label:"10"},{weight:6,reps:8,label:"8"},{weight:6,reps:7,label:"6-7"}]);
-  addSession("ez-bar-curl", seedDate, [{weight:20,reps:10,label:"8-10"},{weight:20,reps:9,label:"8-9"}]);
-  addSession("ez-bar-curl", seedDate2, [{weight:30,reps:8,label:"7-8"},{weight:30,reps:8,label:"6-8"}]);
-
-  addSession("incline-dumbbell-press", seedDate, [{weight:28,reps:9,label:"9"},{weight:28,reps:7,label:"7"}]);
-  addSession("dips", seedDate, [{weight:10,reps:6,label:"6"},{weight:10,reps:6,label:"6"},{weight:5,reps:7,label:"7"}]);
-  addSession("cable-fly-upper", seedDate, [{weight:32,reps:6,label:"5-6"},{weight:26.5,reps:9,label:"6-9"}]);
-  addSession("military-press-dumbbell", seedDate, [{weight:14,reps:10,label:"10"},{weight:14,reps:7,label:"6-7"}]);
-  addSession("bayesian-cable-curl", seedDate, [{weight:32,reps:8,label:"6-8"},{weight:26.5,reps:7,label:"7"},{weight:26.5,reps:8,label:"7-8"}]);
-  addSession("hammer-curl-preacher", seedDate, [{weight:12,reps:11,label:"10-11"},{weight:12,reps:8,label:"8"}]);
-
-  saveLogs(LOGS);
-
-  var PROGRAMS = {
-    day1:{ title:"Dag 1 — Ryg & Triceps",
-      a:["weighted-pull-ups","chest-supported-row-neutral","chest-supported-row-wide","rear-delt-flyes-cable","pec-deck-rear-delt","one-arm-cable-pushdown","dumbbell-skullcrushers"],
-      b:["chin-ups","bent-over-rows","close-grip-lat-pulldown","wide-grip-lat-pulldown","rear-delt-flyes-single","barbell-skullcrushers","rope-pushdown-cable","single-arm-tricep-pushdown"]
-    },
-    day2:{ title:"Dag 2 — Ben & Mave",
-      a:["leg-extension","squat","hamstring-curl","barbell-rdl","hip-abduction-adduction","calf-raise","leg-raises","cable-crunches"],
-      b:["hamstring-curl","barbell-rdl","bulgarian-split-squat","pendulum-squat","leg-extension","calf-raise-seated","leg-raises","machine-crunches"]
-    },
-    day3:{ title:"Dag 3 — Bryst, Skulder & Biceps",
-      a:["bench-press","incline-smith-press","pec-deck","lateral-raise-cable-single","shoulder-press-barbell","incline-dumbbell-curl","dumbbell-preacher-machine","ez-bar-curl"],
-      b:["incline-dumbbell-press","dips","cable-fly-upper","cable-fly-mid","military-press-dumbbell","lateral-raise-lying","bayesian-cable-curl","ez-bar-curl","hammer-curl-preacher"]
-    }
-  };
-  savePrograms(PROGRAMS);
-  localStorage.setItem(LS_SEEDED, "1");
+  return page(0);
 }
 
 /* ---------------- Score / PR / trend helpers ---------------- */
@@ -379,8 +458,9 @@ function setScore(s){
   var r = s.reps || 0;
   return w*1000 + r;
 }
-function sessionsForExercise(exId, bucketFilter){
-  var logs = loadLogs().filter(function(l){
+function sessionsForExercise(exId, bucketFilter, logsArr){
+  var source = logsArr || loadLogs();
+  var logs = source.filter(function(l){
     if(l.exerciseId!==exId) return false;
     if(bucketFilter){
       var mp = l.musclePos || "1-2";
@@ -401,8 +481,8 @@ function sessionsForExercise(exId, bucketFilter){
     return {date:d, sets:sets, topSet:top, topScore: top ? setScore(top) : null};
   });
 }
-function allTimeBest(exId){
-  var sess = sessionsForExercise(exId);
+function allTimeBest(exId, logsArr){
+  var sess = sessionsForExercise(exId, null, logsArr);
   var best = null;
   sess.forEach(function(s){
     if(s.topScore===null) return;
@@ -410,8 +490,9 @@ function allTimeBest(exId){
   });
   return best;
 }
-function bestPerSetNumber(exId){
-  var logs = loadLogs().filter(function(l){return l.exerciseId===exId && !l.skipped;});
+function bestPerSetNumber(exId, logsArr){
+  var source = logsArr || loadLogs();
+  var logs = source.filter(function(l){return l.exerciseId===exId && !l.skipped;});
   var bySetNum = {};
   logs.forEach(function(l){
     var sn = l.setNumber;
@@ -439,20 +520,26 @@ function trendArrow(t){
 }
 
 /* ---------------- Router / state ---------------- */
-var state = { view:"log", selectedExerciseId:null, activeSession:null };
+var state = { view:"log", selectedExerciseId:null, viewUser:null, histBack:"history", calMonth:null, friendCalMonth:null, calSelectedDay:null };
 var main = document.getElementById("main");
 
 function render(){
+  if(!session){ renderLogin("in"); return; }
   if(state.view==="log") renderLog();
+  else if(state.view==="feed") renderFeed();
   else if(state.view==="history") renderHistoryList();
   else if(state.view==="exerciseHistory") renderExerciseHistory(state.selectedExerciseId);
-  else if(state.view==="programs") renderProgramsList();
-  else if(state.view==="programDetail") renderProgramDetail(state.programKey);
+  else if(state.view==="exercises") renderExercisesPage();
+  else if(state.view==="calendar") renderCalendarPage();
+  else if(state.view==="comments") renderCommentsPage();
   else if(state.view==="wins") renderWinsPlateaus();
+  else if(state.view==="friends") renderFriends();
+  else if(state.view==="friendProfile") renderFriendProfile(state.viewUser);
 }
 
 function goto(view, extra){
   state.view = view;
+  if(view!=="exerciseHistory" && view!=="friendProfile") state.viewUser = (view==="feed"||view==="friends") ? null : state.viewUser;
   if(extra) Object.assign(state, extra);
   render();
   window.scrollTo(0,0);
@@ -470,11 +557,13 @@ function showToast(msg, ms){
 /* ---------------- App-titel = genvej til hovedskærmen ---------------- */
 var appTitleBtn = document.getElementById("appTitleBtn");
 appTitleBtn.addEventListener("click", function(){
+  if(!session) return;
   logDraft.exerciseId = null;
   logDraft.musclePos = "1-2";
   logDraft.repsMode = "wheel";
   logDraft.wheelValue = 8;
   logDraft.textValue = "";
+  state.viewUser = null;
   goto("log");
 });
 
@@ -483,15 +572,67 @@ var menuBtn = document.getElementById("menuBtn");
 var menuOverlay = document.getElementById("menuOverlay");
 menuBtn.addEventListener("click", function(){ menuOverlay.classList.add("open"); updateMenuActive(); });
 menuOverlay.addEventListener("click", function(e){ if(e.target===menuOverlay) menuOverlay.classList.remove("open"); });
-document.querySelectorAll(".menu-item").forEach(function(item){
+document.querySelectorAll(".menu-item[data-view]").forEach(function(item){
   item.addEventListener("click", function(){
     menuOverlay.classList.remove("open");
+    state.viewUser = null;
     goto(item.getAttribute("data-view"));
   });
 });
+document.getElementById("menuLogout").addEventListener("click", function(){
+  menuOverlay.classList.remove("open");
+  if(!confirm("Vil du logge ud?")) return;
+  sb.auth.signOut().catch(function(){});
+  session = null; myProfile = null; memEx = []; memLogs = []; friendCache = null;
+  document.getElementById("menuBtn").style.display = "none";
+  renderLogin("in");
+});
 function updateMenuActive(){
-  document.querySelectorAll(".menu-item").forEach(function(item){
-    item.classList.toggle("active", item.getAttribute("data-view")===state.view || (item.getAttribute("data-view")==="history" && state.view==="exerciseHistory") || (item.getAttribute("data-view")==="programs" && state.view==="programDetail"));
+  document.querySelectorAll(".menu-item[data-view]").forEach(function(item){
+    item.classList.toggle("active", item.getAttribute("data-view")===state.view || (item.getAttribute("data-view")==="history" && state.view==="exerciseHistory" && !state.viewUser && state.histBack!=="exercises") || (item.getAttribute("data-view")==="exercises" && state.view==="exerciseHistory" && !state.viewUser && state.histBack==="exercises") || (item.getAttribute("data-view")==="friends" && state.view==="friendProfile"));
+  });
+  var mu = document.getElementById("menuUser");
+  mu.textContent = myProfile ? "("+myProfile.username+")" : "";
+  refreshMenuBadges();
+}
+
+/* ---------- Ulæste kommentarer (in-app notifikation) ---------- */
+var LS_COMMENTS_SEEN = "jernlog_comments_seen";
+function getCommentsSeen(){ var v = 0; try{ v = parseInt(localStorage.getItem(LS_COMMENTS_SEEN)||"0",10)||0; }catch(e){} return v; }
+function setCommentsSeenNow(){ try{ localStorage.setItem(LS_COMMENTS_SEEN, String(Date.now())); }catch(e){} }
+/* En kommentar er "min samtale" hvis den er på min træning, eller på en træning jeg selv har kommenteret */
+function myConversationComments(allComments){
+  var me = session.user.id;
+  var myKeys = {};
+  allComments.forEach(function(c){
+    var key = c.target_user + "|" + c.workout_start;
+    if(c.target_user===me || c.author===me) myKeys[key] = true;
+  });
+  return allComments.filter(function(c){ return myKeys[c.target_user + "|" + c.workout_start]; });
+}
+function countUnreadComments(allComments){
+  var me = session.user.id;
+  var seen = getCommentsSeen();
+  return myConversationComments(allComments).filter(function(c){
+    return c.author!==me && Date.parse(c.created_at) > seen;
+  }).length;
+}
+
+function refreshMenuBadges(){
+  if(!session) return;
+  sb.from("friendships").select("id").eq("addressee", session.user.id).eq("status","pending").then(function(res){
+    var dot = document.getElementById("friendReqDot");
+    if(res.error || !res.data || res.data.length===0){ dot.style.display="none"; return; }
+    dot.textContent = res.data.length;
+    dot.style.display = "inline-flex";
+  });
+  sb.from("comments").select("*").order("created_at",{ascending:true}).limit(1000).then(function(res){
+    var dot = document.getElementById("commentDot");
+    if(res.error || !res.data){ dot.style.display="none"; return; }
+    var n = countUnreadComments(res.data);
+    if(n===0){ dot.style.display="none"; return; }
+    dot.textContent = n;
+    dot.style.display = "inline-flex";
   });
 }
 
@@ -504,6 +645,197 @@ function openModal(html){
 }
 function closeModal(){ modalOverlay.classList.remove("open"); }
 modalOverlay.addEventListener("click", function(e){ if(e.target===modalOverlay) closeModal(); });
+
+/* =========================================================
+   LOGIN / OPRET KONTO
+   ========================================================= */
+function renderLogin(mode, prefillEmail){
+  document.getElementById("menuBtn").style.display = "none";
+  var html = '<div class="login-wrap">';
+  html += '<div class="login-logo">🏋️</div>';
+  html += '<div class="login-title">Master Matteos Jernlog</div>';
+  if(mode==="sent"){
+    html += '<div class="login-sub">Konto oprettet!</div>';
+    html += '<div class="card"><div style="font-size:15px;line-height:1.5;">📧 Vi har sendt en bekræftelses-mail til <b>'+escapeHtml(prefillEmail||"din email")+'</b>.<br><br>Klik på linket i mailen (tjek evt. spam), og log derefter ind her.</div></div>';
+    html += '<button class="btn primary" id="gotoLoginBtn">Til log ind</button>';
+    html += '</div>';
+    main.innerHTML = html;
+    document.getElementById("gotoLoginBtn").addEventListener("click", function(){ renderLogin("in", prefillEmail); });
+    return;
+  }
+  html += '<div class="login-sub">'+(mode==="up" ? "Opret en konto for at komme i gang" : "Log ind for at fortsætte")+'</div>';
+  html += '<div class="card">';
+  if(mode==="up"){
+    html += '<div class="field"><label class="field-label">Brugernavn (det dine venner ser)</label><input type="text" id="authUsername" autocomplete="off" autocapitalize="off" placeholder="fx matteo"></div>';
+  }
+  html += '<div class="field"><label class="field-label">Email</label><input type="email" id="authEmail" autocomplete="username" autocapitalize="off" value="'+escapeHtml(prefillEmail||"")+'" placeholder="din@email.dk"></div>';
+  html += '<div class="field"><label class="field-label">Adgangskode'+(mode==="up"?" (mindst 6 tegn)":"")+'</label><input type="password" id="authPassword" autocomplete="'+(mode==="up"?"new-password":"current-password")+'" placeholder="••••••••"></div>';
+  html += '<button class="btn primary" id="authSubmit">'+(mode==="up" ? "Opret konto" : "Log ind")+'</button>';
+  html += '</div>';
+  html += '<div class="login-switch" id="authSwitch">'+(mode==="up" ? "Har du allerede en konto? Log ind" : "Ny her? Opret en konto")+'</div>';
+  html += '</div>';
+  main.innerHTML = html;
+
+  document.getElementById("authSwitch").addEventListener("click", function(){
+    renderLogin(mode==="up" ? "in" : "up", document.getElementById("authEmail").value.trim());
+  });
+
+  var submitBtn = document.getElementById("authSubmit");
+  submitBtn.addEventListener("click", function(){
+    var email = document.getElementById("authEmail").value.trim();
+    var password = document.getElementById("authPassword").value;
+    if(!email || email.indexOf("@")===-1){ showToast("Skriv en gyldig email"); return; }
+    if(!password || password.length<6){ showToast("Adgangskoden skal være mindst 6 tegn"); return; }
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Vent…";
+
+    if(mode==="up"){
+      var uname = document.getElementById("authUsername").value.trim().toLowerCase();
+      if(!/^[a-z0-9æøå_.-]{2,20}$/.test(uname)){
+        showToast("Brugernavn: 2-20 tegn, kun bogstaver/tal/._-");
+        submitBtn.disabled = false; submitBtn.textContent = "Opret konto";
+        return;
+      }
+      sb.auth.signUp({ email: email, password: password, options: { data: { username: uname } } }).then(function(res){
+        if(res.error){
+          var m = res.error.message||"";
+          if(m.indexOf("already registered")!==-1) showToast("Der findes allerede en konto med den email");
+          else showToast("Kunne ikke oprette konto: "+m);
+          submitBtn.disabled = false; submitBtn.textContent = "Opret konto";
+          return;
+        }
+        if(res.data && res.data.session){
+          /* email-bekræftelse slået fra — direkte ind */
+          session = res.data.session;
+          bootAfterLogin();
+        } else {
+          renderLogin("sent", email);
+        }
+      });
+    } else {
+      sb.auth.signInWithPassword({ email: email, password: password }).then(function(res){
+        if(res.error){
+          var m = res.error.message||"";
+          if(m.indexOf("Invalid login credentials")!==-1) showToast("Forkert email eller adgangskode");
+          else if(m.indexOf("Email not confirmed")!==-1) showToast("Bekræft først din email — tjek din indbakke");
+          else showToast("Kunne ikke logge ind: "+m);
+          submitBtn.disabled = false; submitBtn.textContent = "Log ind";
+          return;
+        }
+        session = res.data.session;
+        bootAfterLogin();
+      });
+    }
+  });
+}
+
+function renderLoadingScreen(msg){
+  main.innerHTML = '<div class="empty-state" style="padding-top:70px;font-size:15px;">'+escapeHtml(msg||"Henter dine data…")+'</div>';
+}
+
+/* Sikr at der findes en profil-række (brugernavn) for kontoen */
+function ensureProfile(){
+  return sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle().then(function(res){
+    if(res.data){ myProfile = res.data; return true; }
+    var uname = (session.user.user_metadata && session.user.user_metadata.username) || "";
+    return tryInsertProfile(uname);
+  });
+}
+function tryInsertProfile(uname){
+  if(!/^[a-z0-9æøå_.-]{2,20}$/.test(uname)) return promptUsername(uname);
+  return sb.from("profiles").insert({ id: session.user.id, username: uname }).then(function(res){
+    if(res.error){
+      if(String(res.error.code)==="23505") return promptUsername(uname); // optaget
+      showToast("Kunne ikke gemme profil: "+(res.error.message||""));
+      return promptUsername(uname);
+    }
+    myProfile = { id: session.user.id, username: uname };
+    return true;
+  });
+}
+function promptUsername(prev){
+  return new Promise(function(resolve){
+    /* Sikkerhedsnet: hvis modal'en lukkes uden at gemme, kan den åbnes igen */
+    main.innerHTML = '<div class="empty-state" style="padding-top:60px;">Du mangler at vælge et brugernavn.</div>';
+    var reopen = document.createElement("button");
+    reopen.className = "btn primary";
+    reopen.textContent = "Vælg brugernavn";
+    reopen.style.marginTop = "10px";
+    reopen.addEventListener("click", open);
+    main.appendChild(reopen);
+    function open(){
+      var html = '<h3>Vælg brugernavn</h3>'+
+        '<div class="muted" style="margin-bottom:12px;">'+(prev ? 'Brugernavnet "'+escapeHtml(prev)+'" er optaget eller ugyldigt — vælg et andet.' : 'Vælg det navn dine venner skal se.')+'</div>'+
+        '<div class="field"><input type="text" id="unameInput" autocomplete="off" autocapitalize="off" placeholder="fx matteo"></div>'+
+        '<button class="btn primary" id="unameSave">Gem</button>';
+      openModal(html);
+      document.getElementById("unameSave").addEventListener("click", function(){
+        var u = document.getElementById("unameInput").value.trim().toLowerCase();
+        if(!/^[a-z0-9æøå_.-]{2,20}$/.test(u)){ showToast("2-20 tegn, kun bogstaver/tal/._-"); return; }
+        closeModal();
+        tryInsertProfile(u).then(resolve);
+      });
+    }
+    open();
+  });
+}
+
+/* Hent egne øvelser + logs fra skyen */
+function fetchOwnData(){
+  return Promise.all([
+    fetchAllRows(function(){ return sb.from("exercises").select("*").eq("user_id", session.user.id).order("id"); }),
+    fetchAllRows(function(){ return sb.from("logs").select("*").eq("user_id", session.user.id).order("id"); })
+  ]).then(function(results){
+    memEx = results[0].map(rowToEx);
+    memLogs = results[1].map(rowToLog);
+  });
+}
+
+/* Engangs-flytning: Matteos gamle lokale data -> skyen (kun hans konto, kun hvis skyen er tom) */
+function maybeMigrateLocalData(){
+  if(!session.user.email || session.user.email.toLowerCase()!==MIGRATION_OWNER_EMAIL) return Promise.resolve();
+  if(memEx.length>0 || memLogs.length>0) return Promise.resolve();
+  var localEx = [], localLogs = [];
+  try{ localEx = JSON.parse(localStorage.getItem(LS_EX))||[]; }catch(e){}
+  try{ localLogs = JSON.parse(localStorage.getItem(LS_LOGS))||[]; }catch(e){}
+  if(localEx.length===0) return Promise.resolve();
+  renderLoadingScreen("Flytter dine data til skyen — vent et øjeblik…");
+  memEx = localEx.map(function(e){ return {id:e.id, name:e.name, bodyweight:!!e.bodyweight, muscle:e.muscle||null}; });
+  memLogs = localLogs.map(function(l){
+    return {id:l.id, exerciseId:l.exerciseId, date:l.date, loggedAt:(l.loggedAt===undefined?null:l.loggedAt), setNumber:l.setNumber, weight:(l.weight===undefined?null:l.weight), reps:(l.reps===undefined?null:l.reps), repsLabel:(l.repsLabel===undefined||l.repsLabel===null?null:String(l.repsLabel)), musclePos:l.musclePos||"1-2", skipped:!!l.skipped};
+  });
+  return upsertChunks("exercises", memEx.map(exToRow))
+    .then(function(){ return upsertChunks("logs", memLogs.map(logToRow)); })
+    .then(function(){ showToast("✓ Dine gamle data er flyttet til skyen", 3000); })
+    .catch(function(err){
+      memEx = []; memLogs = [];
+      showToast("⚠ Flytning fejlede — tjek internet og genstart appen", 4000);
+    });
+}
+
+function bootAfterLogin(){
+  document.getElementById("menuBtn").style.display = "flex";
+  renderLoadingScreen("Henter dine data…");
+  ensureProfile().then(function(){
+    return flushPendingSnapshot();
+  }).then(function(){
+    return fetchOwnData();
+  }).then(function(){
+    return maybeMigrateLocalData();
+  }).then(function(){
+    maybeMigrateVariants();
+    updateMenuActive();
+    goto("log");
+  }).catch(function(err){
+    renderLoadingScreen("Kunne ikke hente data — tjek din internetforbindelse og prøv igen.");
+    var retry = document.createElement("button");
+    retry.className = "btn primary";
+    retry.style.marginTop = "16px";
+    retry.textContent = "Prøv igen";
+    retry.addEventListener("click", bootAfterLogin);
+    main.appendChild(retry);
+  });
+}
 
 /* =========================================================
    VIEW: LOG
@@ -612,34 +944,65 @@ function muscleSelectHtml(selectedMuscle, selectId){
   return html;
 }
 
+function variantToggleHtml(toggleId, selected){
+  var html = '<div class="field"><label class="field-label">Liste på Øvelser-siden (valgfri)</label>';
+  html += '<div class="toggle-group" id="'+toggleId+'">';
+  [["a","Liste A"],["b","Liste B"],["ab","Begge"]].forEach(function(p){
+    html += '<div class="toggle-opt'+(selected===p[0]?' selected':'')+'" data-var="'+p[0]+'">'+p[1]+'</div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+function attachVariantToggle(toggleId, initial, onChange){
+  var box = document.getElementById(toggleId);
+  var current = initial || null;
+  box.querySelectorAll(".toggle-opt").forEach(function(opt){
+    opt.addEventListener("click", function(){
+      var v = opt.getAttribute("data-var");
+      if(current===v){
+        current = null; /* tryk igen = fravælg */
+        opt.classList.remove("selected");
+      } else {
+        current = v;
+        box.querySelectorAll(".toggle-opt").forEach(function(o){o.classList.remove("selected");});
+        opt.classList.add("selected");
+      }
+      onChange(current);
+    });
+  });
+}
+
 function openAddExerciseModal(prefillName){
   var html = '<h3>Tilføj ny øvelse</h3>'+
     '<div class="field"><label class="field-label">Navn</label><input type="text" id="newExName" value="'+escapeHtml(prefillName||"")+'"></div>'+
     '<div class="field"><label class="field-label">Type</label>'+
-    '<div class="toggle-group">'+
+    '<div class="toggle-group" id="newExTypeToggle">'+
     '<div class="toggle-opt selected" data-bw="0">Vægt/maskine</div>'+
     '<div class="toggle-opt" data-bw="1">Kropsvægt</div>'+
     '</div></div>'+
     '<div class="field"><label class="field-label">Muskelgruppe (bruges til "Foreslået i dag")</label>'+muscleSelectHtml(null)+'</div>'+
+    variantToggleHtml("newExVariantToggle", null)+
     '<button class="btn primary" id="saveNewEx">Gem øvelse</button>';
   openModal(html);
   var bwVal = 0;
-  modalSheet.querySelectorAll(".toggle-opt").forEach(function(opt){
+  var variantVal = null;
+  modalSheet.querySelectorAll("#newExTypeToggle .toggle-opt").forEach(function(opt){
     opt.addEventListener("click", function(){
-      modalSheet.querySelectorAll(".toggle-opt").forEach(function(o){o.classList.remove("selected");});
+      modalSheet.querySelectorAll("#newExTypeToggle .toggle-opt").forEach(function(o){o.classList.remove("selected");});
       opt.classList.add("selected");
       bwVal = parseInt(opt.getAttribute("data-bw"));
     });
   });
+  attachVariantToggle("newExVariantToggle", null, function(v){ variantVal = v; });
   document.getElementById("saveNewEx").addEventListener("click", function(){
     var name = document.getElementById("newExName").value.trim();
     if(!name){ showToast("Skriv et navn"); return; }
     var muscle = document.getElementById("newExMuscle").value || null;
-    var list = loadEx();
+    var list = loadEx().slice();
     var id = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") || uid("ex");
     var uniqueId = id, n=2;
     while(list.some(function(e){return e.id===uniqueId;})){ uniqueId = id+"-"+n; n++; }
-    list.push({id:uniqueId, name:name, bodyweight: bwVal===1, muscle: muscle});
+    list.push({id:uniqueId, name:name, bodyweight: bwVal===1, muscle: muscle, variant: variantVal});
     saveEx(list);
     logDraft.exerciseId = uniqueId;
     logDraft.musclePos = "1-2";
@@ -755,9 +1118,11 @@ function openEditExerciseModal(exId, onSaved){
     '<div class="toggle-opt'+(exObj.bodyweight?' selected':'')+'" data-bw="1">Kropsvægt</div>'+
     '</div></div>'+
     '<div class="field"><label class="field-label">Muskelgruppe (bruges til "Foreslået i dag")</label>'+muscleSelectHtml(exObj.muscle||null, "editExMuscle")+'</div>'+
+    variantToggleHtml("editExVariantToggle", exObj.variant||null)+
     '<button class="btn primary" id="saveRenameEx">Gem</button>';
   openModal(html);
   var bwVal = exObj.bodyweight ? 1 : 0;
+  var variantVal = exObj.variant || null;
   modalSheet.querySelectorAll("#editExTypeToggle .toggle-opt").forEach(function(opt){
     opt.addEventListener("click", function(){
       modalSheet.querySelectorAll("#editExTypeToggle .toggle-opt").forEach(function(o){o.classList.remove("selected");});
@@ -765,18 +1130,16 @@ function openEditExerciseModal(exId, onSaved){
       bwVal = parseInt(opt.getAttribute("data-bw"));
     });
   });
+  attachVariantToggle("editExVariantToggle", variantVal, function(v){ variantVal = v; });
   document.getElementById("saveRenameEx").addEventListener("click", function(){
     var newName = document.getElementById("editExName").value.trim();
     if(!newName){ showToast("Skriv et navn"); return; }
     var muscle = document.getElementById("editExMuscle").value || null;
-    var list = loadEx();
-    var item = list.find(function(e){ return e.id===exId; });
-    if(item){
-      item.name = newName;
-      item.bodyweight = bwVal===1;
-      item.muscle = muscle;
-      saveEx(list);
-    }
+    var list = loadEx().map(function(e){
+      if(e.id!==exId) return e;
+      return {id:e.id, name:newName, bodyweight: bwVal===1, muscle: muscle, variant: variantVal};
+    });
+    saveEx(list);
     closeModal();
     showToast("Øvelse opdateret");
     if(onSaved) onSaved();
@@ -864,7 +1227,7 @@ function attachLogFormHandlers(){
         if(weight===null){ showToast("Udfyld vægt"); return; }
       }
       var prevBest = allTimeBest(exObj.id);
-      var logs = loadLogs();
+      var logs = loadLogs().slice();
       var setNum = nextSetNumberForToday(exObj.id);
       var newLog = {
         id: uid("log"),
@@ -897,7 +1260,7 @@ function attachLogFormHandlers(){
   if(skipBtn){
     skipBtn.addEventListener("click", function(){
       var exObj = getExerciseById(logDraft.exerciseId);
-      var logs = loadLogs();
+      var logs = loadLogs().slice();
       var setNum = nextSetNumberForToday(exObj.id);
       var newLog = {
         id: uid("log"),
@@ -920,9 +1283,10 @@ function attachLogFormHandlers(){
 }
 
 /* =========================================================
-   VIEW: HISTORY LIST
+   VIEW: HISTORY LIST (egne øvelser)
    ========================================================= */
 function renderHistoryList(){
+  state.viewUser = null;
   var ex = loadEx();
   var logs = loadLogs();
   var loggedIds = {};
@@ -970,7 +1334,7 @@ function renderHistoryList(){
     box.innerHTML = out;
     box.querySelectorAll(".list-row").forEach(function(row){
       row.addEventListener("click", function(){
-        goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-id")});
+        goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-id"), viewUser: null, histBack:"history"});
       });
     });
   }
@@ -980,24 +1344,49 @@ function renderHistoryList(){
 
 /* =========================================================
    VIEW: EXERCISE HISTORY DETAIL
+   (bruges både til egne øvelser og read-only til venners)
    ========================================================= */
-function renderExerciseHistory(exId){
-  var exObj = getExerciseById(exId);
-  if(!exObj){ goto("history"); return; }
-  var sessions = sessionsForExercise(exId);
-  var best = allTimeBest(exId);
+function ctxData(){
+  if(state.viewUser && friendCache && friendCache.userId===state.viewUser){
+    return { ex: friendCache.ex, logs: friendCache.logs, readOnly: true, who: friendCache.username };
+  }
+  return { ex: memEx, logs: memLogs, readOnly: false, who: null };
+}
 
-  var html = '<div class="back-btn" id="backToHist">‹ Historik</div>';
+function renderExerciseHistory(exId){
+  var ctx = ctxData();
+  var exObj = ctx.ex.find(function(e){return e.id===exId;});
+  if(!exObj){ goto(ctx.readOnly ? "friendProfile" : "history"); return; }
+  var sessions = sessionsForExercise(exId, null, ctx.logs);
+  var best = allTimeBest(exId, ctx.logs);
+
+  var backLabel = ctx.readOnly ? "‹ "+escapeHtml(ctx.who||"Profil") : (state.histBack==="exercises" ? "‹ Øvelser" : "‹ Historik");
+  var html = '<div class="back-btn" id="backToHist">'+backLabel+'</div>';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
   html += '<h2 class="section" style="margin-top:0;margin-bottom:0;">'+escapeHtml(exObj.name)+'</h2>';
-  html += '<button class="icon-btn" id="renameExHistBtn" style="font-size:16px;">✎</button>';
+  if(!ctx.readOnly) html += '<button class="icon-btn" id="renameExHistBtn" style="font-size:16px;">✎</button>';
   html += '</div>';
+
+  /* Se hvordan øvelsen udføres — færdige søgninger der åbner i browseren */
+  var q = encodeURIComponent(exObj.name + " exercise form");
+  var qi = encodeURIComponent(exObj.name + " exercise");
+  html += '<div class="howto-row">';
+  html += '<a class="howto-link" href="https://www.youtube.com/results?search_query='+q+'" target="_blank" rel="noopener">🎥 Se på YouTube</a>';
+  html += '<a class="howto-link" href="https://www.google.com/search?tbm=isch&q='+qi+'" target="_blank" rel="noopener">🖼 Se billeder</a>';
+  html += '</div>';
+
+  function goBack(){
+    if(ctx.readOnly) goto("friendProfile");
+    else if(state.histBack==="exercises") goto("exercises");
+    else goto("history");
+  }
 
   if(sessions.length===0){
     html += '<div class="card"><div class="empty-state">Ingen log endnu for denne øvelse.</div></div>';
     main.innerHTML = html;
-    document.getElementById("backToHist").addEventListener("click", function(){ goto("history"); });
-    document.getElementById("renameExHistBtn").addEventListener("click", function(){
+    document.getElementById("backToHist").addEventListener("click", goBack);
+    var rbtn0 = document.getElementById("renameExHistBtn");
+    if(rbtn0) rbtn0.addEventListener("click", function(){
       openEditExerciseModal(exId, function(){ renderExerciseHistory(exId); });
     });
     return;
@@ -1008,11 +1397,11 @@ function renderExerciseHistory(exId){
   html += '</div>';
 
   html += '<div class="card"><div class="muted" style="font-weight:700;color:var(--text);margin-bottom:6px;">Udvikling — øvelse 1-2 for muskel</div>';
-  html += renderGraphSVG(sessionsForExercise(exId, "1-2"), exObj.bodyweight);
+  html += renderGraphSVG(sessionsForExercise(exId, "1-2", ctx.logs), exObj.bodyweight);
   html += '</div>';
 
   html += '<div class="card"><div class="muted" style="font-weight:700;color:var(--text);margin-bottom:6px;">Udvikling — øvelse 3-4 for muskel</div>';
-  html += renderGraphSVG(sessionsForExercise(exId, "3-4"), exObj.bodyweight);
+  html += renderGraphSVG(sessionsForExercise(exId, "3-4", ctx.logs), exObj.bodyweight);
   html += '</div>';
 
   var reversedIdx = [];
@@ -1040,7 +1429,9 @@ function renderExerciseHistory(exId){
         }
         html += '<div><b>'+wLabel+'</b> × '+escapeHtml(set.repsLabel||String(set.reps))+' <span class="set-meta">(sæt '+set.setNumber+posLabel+')</span></div>';
       }
-      html += '<div class="set-actions"><button class="icon-btn edit" data-action="edit" data-logid="'+set.id+'">✎</button><button class="icon-btn del" data-action="del" data-logid="'+set.id+'">🗑</button></div>';
+      if(!ctx.readOnly){
+        html += '<div class="set-actions"><button class="icon-btn edit" data-action="edit" data-logid="'+set.id+'">✎</button><button class="icon-btn del" data-action="del" data-logid="'+set.id+'">🗑</button></div>';
+      }
       html += '</div>';
     });
     html += '</div>';
@@ -1048,8 +1439,9 @@ function renderExerciseHistory(exId){
   html += '</div>';
 
   main.innerHTML = html;
-  document.getElementById("backToHist").addEventListener("click", function(){ goto("history"); });
-  document.getElementById("renameExHistBtn").addEventListener("click", function(){
+  document.getElementById("backToHist").addEventListener("click", goBack);
+  var rbtn = document.getElementById("renameExHistBtn");
+  if(rbtn) rbtn.addEventListener("click", function(){
     openEditExerciseModal(exId, function(){ renderExerciseHistory(exId); });
   });
 
@@ -1072,7 +1464,9 @@ function renderExerciseHistory(exId){
 }
 
 function openEditSetModal(logId, exId){
-  var logs = loadLogs();
+  /* Vigtigt: dyb kopi af hver log — ellers muterer vi de objekter som
+     cloud-sync'ens diff sammenligner med, og ændringen bliver aldrig gemt. */
+  var logs = loadLogs().map(function(l){ return Object.assign({}, l); });
   var log = logs.find(function(l){return l.id===logId;});
   if(!log) return;
   var exObj = getExerciseById(exId);
@@ -1158,55 +1552,269 @@ function renderGraphSVG(sessionsAll, bodyweight){
 }
 
 /* =========================================================
-   VIEW: PROGRAMS
+   VIEW: ØVELSER (grupperet efter muskel, med Liste A/B)
    ========================================================= */
-function renderProgramsList(){
-  var programs = loadPrograms();
-  var html = '<h2 class="section">Programmer</h2>';
-  html += '<div class="card" style="padding:0;">';
-  ["day1","day2","day3"].forEach(function(key){
-    var p = programs[key];
-    html += '<div class="list-row" data-key="'+key+'"><div class="name">'+escapeHtml(p.title)+'</div><div class="chev">›</div></div>';
+function renderExercisesPage(){
+  state.viewUser = null;
+  var ex = loadEx();
+  var html = '<h2 class="section">Øvelser</h2>';
+  html += '<button class="btn" id="addExBtn" style="margin-bottom:6px;">＋ Tilføj ny øvelse</button>';
+
+  var usedIds = {};
+
+  function sortInGroup(arr, grp){
+    return arr.slice().sort(function(a,b){
+      var ma = grp.muscles.indexOf(a.muscle), mb = grp.muscles.indexOf(b.muscle);
+      if(ma!==mb) return ma-mb;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  function listHtml(arr, grp){
+    var out = '<div class="card" style="padding:0;margin-top:0;margin-bottom:16px;">';
+    sortInGroup(arr, grp).forEach(function(e){
+      out += '<div class="list-row" data-exid="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">'+(MUSCLE_LABELS[e.muscle]||"")+(e.bodyweight?' · Kropsvægt':'')+'</div></div><div class="chev">›</div></div>';
+    });
+    out += '</div>';
+    return out;
+  }
+
+  MUSCLE_GROUPS_BY_DAY.forEach(function(grp){
+    var inGroup = ex.filter(function(e){ return e.muscle && grp.muscles.indexOf(e.muscle)!==-1; });
+    inGroup.forEach(function(e){ usedIds[e.id]=true; });
+    if(inGroup.length===0) return;
+    html += '<h2 class="section">'+escapeHtml(grp.title)+'</h2>';
+    var listA = inGroup.filter(function(e){ return e.variant==="a"||e.variant==="ab"; });
+    var listB = inGroup.filter(function(e){ return e.variant==="b"||e.variant==="ab"; });
+    var listNone = inGroup.filter(function(e){ return !e.variant; });
+    if(listA.length){ html += '<div class="train-tag">Liste A</div>'; html += listHtml(listA, grp); }
+    if(listB.length){ html += '<div class="train-tag">Liste B</div>'; html += listHtml(listB, grp); }
+    if(listNone.length){
+      if(listA.length||listB.length) html += '<div class="train-tag" style="background:var(--bg-elevated);color:var(--text-dim);">Uden liste</div>';
+      html += listHtml(listNone, grp);
+    }
   });
-  html += '</div>';
+
+  var rest = ex.filter(function(e){ return !usedIds[e.id]; });
+  if(rest.length){
+    html += '<h2 class="section">Uden muskelgruppe</h2>';
+    html += '<div class="card" style="padding:0;margin-bottom:16px;">';
+    rest.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(e){
+      html += '<div class="list-row" data-exid="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">'+(e.bodyweight?'Kropsvægt':'')+'</div></div><div class="chev">›</div></div>';
+    });
+    html += '</div>';
+  }
+
+  if(ex.length===0){
+    html += '<div class="card"><div class="empty-state">Ingen øvelser endnu — tilføj din første! 💪</div></div>';
+  }
+
   main.innerHTML = html;
-  main.querySelectorAll(".list-row").forEach(function(row){
+  document.getElementById("addExBtn").addEventListener("click", function(){ openAddExerciseModal(""); });
+  main.querySelectorAll("[data-exid]").forEach(function(row){
     row.addEventListener("click", function(){
-      goto("programDetail", {programKey: row.getAttribute("data-key")});
+      goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-exid"), viewUser:null, histBack:"exercises"});
     });
   });
 }
 
-function renderProgramDetail(key){
-  var programs = loadPrograms();
-  var p = programs[key];
-  var html = '<div class="back-btn" id="backToPrograms">‹ Programmer</div>';
-  html += '<h2 class="day-title">'+escapeHtml(p.title)+'</h2>';
+/* Engangs-fordeling af Liste A/B ud fra det gamle Programmer-data (kun på telefoner der har det) */
+function maybeMigrateVariants(){
+  try{
+    if(localStorage.getItem("jernlog_migration_variant_v1")) return;
+    var programs = loadPrograms();
+    if(programs && memEx.length>0){
+      var vmap = {};
+      ["day1","day2","day3"].forEach(function(k){
+        var p = programs[k]; if(!p) return;
+        (p.a||[]).forEach(function(id){ vmap[id] = (vmap[id]==="b"||vmap[id]==="ab") ? "ab" : "a"; });
+        (p.b||[]).forEach(function(id){ vmap[id] = (vmap[id]==="a"||vmap[id]==="ab") ? "ab" : "b"; });
+      });
+      var changed = false;
+      var list = memEx.map(function(e){
+        if(!e.variant && vmap[e.id]){ changed = true; return Object.assign({}, e, {variant: vmap[e.id]}); }
+        return e;
+      });
+      if(changed) saveEx(list);
+    }
+    localStorage.setItem("jernlog_migration_variant_v1", "1");
+  }catch(e){}
+}
 
-  ["a","b"].forEach(function(variant){
-    html += '<div class="train-tag">Træning '+variant.toUpperCase()+'</div>';
-    html += '<div class="card" style="padding:0;margin-top:0;margin-bottom:20px;">';
-    p[variant].forEach(function(exId, idx){
-      var e = getExerciseById(exId);
-      if(!e) return;
-      html += '<div class="list-row" data-exid="'+exId+'"><div class="name">'+(idx+1)+'. '+escapeHtml(e.name)+'</div><div class="chev">Log ›</div></div>';
-    });
-    html += '</div>';
+/* =========================================================
+   KALENDER-HJÆLPERE
+   ========================================================= */
+var MONTH_NAMES = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
+
+function trainedDateSet(logs){
+  var set = {};
+  logs.forEach(function(l){ if(l.date) set[l.date] = true; });
+  return set;
+}
+function pad2(n){ return (n<10?"0":"")+n; }
+function isoOf(y,m,d){ return y+"-"+pad2(m+1)+"-"+pad2(d); }
+
+function streakStats(trainedSet){
+  var dates = Object.keys(trainedSet).sort();
+  var best = 0, cur = 0, prevMs = null;
+  var DAY = 86400000;
+  dates.forEach(function(d){
+    var ms = Date.parse(d+"T00:00:00Z");
+    if(prevMs!==null && ms - prevMs === DAY) cur += 1;
+    else cur = 1;
+    if(cur>best) best = cur;
+    prevMs = ms;
   });
+  /* nuværende streak: dage i træk til og med i dag (eller i går, hvis dagens træning ikke er logget endnu) */
+  var current = 0;
+  var t = Date.parse(todayISO()+"T00:00:00Z");
+  if(!trainedSet[todayISO()]) t -= DAY;
+  while(trainedSet[new Date(t).toISOString().slice(0,10)]){
+    current += 1;
+    t -= DAY;
+  }
+  return { best: best, current: current };
+}
 
-  html += '<div class="muted" style="text-align:center;">Tryk på en øvelse for at logge den med det samme.</div>';
+function calendarGridHtml(y, m, trainedSet){
+  var first = new Date(Date.UTC(y, m, 1));
+  var startBlank = (first.getUTCDay()+6)%7; /* mandag først */
+  var daysInMonth = new Date(Date.UTC(y, m+1, 0)).getUTCDate();
+  var today = todayISO();
+  var html = '<div class="cal-grid">';
+  ["M","T","O","T","F","L","S"].forEach(function(d){ html += '<div class="cal-dow">'+d+'</div>'; });
+  for(var i=0;i<startBlank;i++) html += '<div class="cal-day out"></div>';
+  for(var d=1;d<=daysInMonth;d++){
+    var iso = isoOf(y,m,d);
+    var cls = "cal-day";
+    if(trainedSet[iso]) cls += " trained";
+    if(iso===today) cls += " today";
+    html += '<div class="'+cls+'"'+(trainedSet[iso]?' data-caldate="'+iso+'"':'')+'>'+d+'</div>';
+  }
+  html += '</div>';
+  return html;
+}
+function monthTrainedCount(trainedSet, y, m){
+  var prefix = y+"-"+pad2(m+1);
+  return Object.keys(trainedSet).filter(function(d){ return d.indexOf(prefix)===0; }).length;
+}
+
+/* Detaljer for én dag: hvad blev der logget */
+function dayDetailHtml(dateIso, logs, exList){
+  var dayLogs = logs.filter(function(l){ return l.date===dateIso; });
+  if(dayLogs.length===0) return "";
+  var byEx = {}, order = [];
+  dayLogs.forEach(function(l){
+    if(!byEx[l.exerciseId]){ byEx[l.exerciseId]=[]; order.push(l.exerciseId); }
+    byEx[l.exerciseId].push(l);
+  });
+  var html = '<div class="card"><div style="font-weight:800;margin-bottom:8px;">'+fmtDateDisplay(dateIso)+'</div>';
+  order.forEach(function(exId){
+    var e = exList.find(function(x){ return x.id===exId; }) || {name:"(slettet øvelse)", bodyweight:false};
+    var sets = byEx[exId].slice().sort(function(a,b){ return (a.setNumber||0)-(b.setNumber||0); });
+    var tracked = sets.filter(function(s){ return !s.skipped; });
+    var setsTxt = tracked.length ? tracked.map(function(s){ return formatSetShort(s, e.bodyweight); }).join(", ") : "sprunget over";
+    html += '<div class="feed-ex-line"><div class="feed-ex-name">'+escapeHtml(e.name)+'</div><div class="feed-ex-sets">'+escapeHtml(setsTxt)+'</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* =========================================================
+   VIEW: KALENDER (egen)
+   ========================================================= */
+function renderCalendarPage(){
+  state.viewUser = null;
+  if(!state.calMonth){ var n = new Date(); state.calMonth = {y: n.getFullYear(), m: n.getMonth()}; }
+  var y = state.calMonth.y, m = state.calMonth.m;
+  var logs = loadLogs();
+  var trainedSet = trainedDateSet(logs);
+  var streaks = streakStats(trainedSet);
+  var workouts = groupWorkouts(logs);
+  var total = workouts.length;
+  var avg = "0";
+  if(workouts.length){
+    var firstMs = workouts[0].start;
+    var weeks = Math.max(1, (Date.now()-firstMs)/(7*86400000));
+    avg = (total/weeks).toFixed(1).replace(".", ",");
+  }
+  var monthCount = monthTrainedCount(trainedSet, y, m);
+
+  var html = '<h2 class="section">Kalender</h2>';
+  html += '<div class="card">';
+  html += '<div class="cal-head"><div><div class="cal-title">'+MONTH_NAMES[m]+' '+y+'</div><div class="cal-sub">'+monthCount+' dag'+(monthCount===1?'':'e')+' trænet denne måned</div></div>';
+  html += '<div class="cal-nav"><button id="calPrev">‹</button><button id="calNext">›</button></div></div>';
+  html += calendarGridHtml(y, m, trainedSet);
+  html += '<div class="muted" style="margin-top:8px;">Tryk på en gul dag for at se hvad du loggede.</div>';
+  html += '</div>';
+
+  html += '<div class="stat-grid">';
+  html += '<div class="stat-box"><div class="stat-num">'+streaks.best+'</div><div class="stat-label">FLEST DAGE I TRÆK</div></div>';
+  html += '<div class="stat-box"><div class="stat-num">'+streaks.current+'</div><div class="stat-label">NUVÆRENDE STREAK</div></div>';
+  html += '<div class="stat-box"><div class="stat-num">'+total+'</div><div class="stat-label">TRÆNINGER I ALT</div></div>';
+  html += '<div class="stat-box"><div class="stat-num">'+avg+'</div><div class="stat-label">TRÆNINGER PR. UGE</div></div>';
+  html += '</div>';
+
+  if(state.calSelectedDay){
+    html += dayDetailHtml(state.calSelectedDay, logs, loadEx());
+  }
+
+  html += '<h2 class="section">Venner denne måned</h2>';
+  html += '<div class="card" style="padding:0;" id="calFriends"><div class="empty-state">Henter…</div></div>';
 
   main.innerHTML = html;
-  document.getElementById("backToPrograms").addEventListener("click", function(){ goto("programs"); });
-  main.querySelectorAll("[data-exid]").forEach(function(row){
-    row.addEventListener("click", function(){
-      logDraft.exerciseId = row.getAttribute("data-exid");
-      logDraft.musclePos = "1-2";
-      logDraft.repsMode = "wheel";
-      logDraft.wheelValue = 8;
-      logDraft.textValue = "";
-      goto("log");
+
+  document.getElementById("calPrev").addEventListener("click", function(){
+    state.calSelectedDay = null;
+    state.calMonth = m===0 ? {y:y-1, m:11} : {y:y, m:m-1};
+    renderCalendarPage();
+  });
+  document.getElementById("calNext").addEventListener("click", function(){
+    state.calSelectedDay = null;
+    state.calMonth = m===11 ? {y:y+1, m:0} : {y:y, m:m+1};
+    renderCalendarPage();
+  });
+  main.querySelectorAll("[data-caldate]").forEach(function(cell){
+    cell.addEventListener("click", function(){
+      state.calSelectedDay = cell.getAttribute("data-caldate");
+      renderCalendarPage();
     });
+  });
+
+  /* Venners måneds-statistik */
+  getAcceptedFriendIds().then(function(friendIds){
+    var box = document.getElementById("calFriends");
+    if(!box) return;
+    if(friendIds.length===0){ box.innerHTML = '<div class="empty-state">Ingen venner endnu.</div>'; return null; }
+    return Promise.all([
+      sb.from("profiles").select("*").in("id", friendIds),
+      fetchAllRows(function(){ return sb.from("logs").select("*").in("user_id", friendIds).order("id"); })
+    ]).then(function(res){
+      var box2 = document.getElementById("calFriends");
+      if(!box2) return;
+      if(res[0].error) throw res[0].error;
+      var nameById = {}; (res[0].data||[]).forEach(function(p){ nameById[p.id]=p.username; });
+      var logsByUser = {};
+      res[1].forEach(function(r){
+        if(!logsByUser[r.user_id]) logsByUser[r.user_id]=[];
+        logsByUser[r.user_id].push(rowToLog(r));
+      });
+      var out = "";
+      friendIds.forEach(function(fid){
+        var fset = trainedDateSet(logsByUser[fid]||[]);
+        var fCount = monthTrainedCount(fset, y, m);
+        var fStreak = streakStats(fset);
+        out += '<div class="list-row" data-gotouser="'+fid+'"><div><div class="name">'+escapeHtml(nameById[fid]||"ukendt")+'</div><div class="muted">Bedste streak: '+fStreak.best+' dage i træk</div></div><div class="trend up" style="font-weight:800;">'+fCount+' dage</div></div>';
+      });
+      box2.innerHTML = out;
+      box2.querySelectorAll("[data-gotouser]").forEach(function(row){
+        row.addEventListener("click", function(){
+          goto("friendProfile", {viewUser: row.getAttribute("data-gotouser")});
+        });
+      });
+    });
+  }).catch(function(){
+    var box = document.getElementById("calFriends");
+    if(box) box.innerHTML = '<div class="empty-state">Kunne ikke hente venners data.</div>';
   });
 }
 
@@ -1263,6 +1871,7 @@ function renderRankingRow(item){
 }
 
 function renderWinsPlateaus(){
+  state.viewUser = null;
   var ranking = computeProgressRanking();
   var html = '<h2 class="section">Wins & Plateaus</h2>';
   html += '<div class="muted" style="margin-bottom:16px;">Baseret på dine seneste træningsgange pr. øvelse (op til 10), sammenlignet først vs. sidst i vinduet.</div>';
@@ -1288,7 +1897,7 @@ function renderWinsPlateaus(){
   main.innerHTML = html;
   main.querySelectorAll("[data-exid]").forEach(function(row){
     row.addEventListener("click", function(){
-      goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-exid")});
+      goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-exid"), viewUser: null, histBack:"history"});
     });
   });
 }
@@ -1300,74 +1909,545 @@ function escapeHtml(s){
   });
 }
 
-/* ---------------- Migrationer (kører én gang, også på telefoner der allerede er sat op) ---------------- */
-function runMigrations(){
-  if(!localStorage.getItem("jernlog_migration_ezbarcurls_v1")){
-    var exList = loadEx();
-    if(!exList.some(function(e){ return e.name==="EZ-bar curls"; })){
-      var id = "ez-bar-curls", n=2;
-      while(exList.some(function(e){return e.id===id;})){ id = "ez-bar-curls-"+n; n++; }
-      exList.push({id:id, name:"EZ-bar curls", bodyweight:false});
-      saveEx(exList);
+/* =========================================================
+   TRÆNINGS-GRUPPERING (30 min uden logs = træning slut)
+   ========================================================= */
+var WORKOUT_GAP_MS = 30*60*1000;
 
-      var logs = loadLogs();
-      var today = todayISO();
-      logs.push({id:uid("log"), exerciseId:id, date:today, setNumber:1, weight:30, reps:8, repsLabel:"8", musclePos:"1-2", skipped:false});
-      logs.push({id:uid("log"), exerciseId:id, date:today, setNumber:2, weight:30, reps:6, repsLabel:"6-7", musclePos:"1-2", skipped:false});
-      saveLogs(logs);
+function effectiveTime(l){
+  return (l.loggedAt!==null && l.loggedAt!==undefined) ? l.loggedAt : Date.parse(l.date+"T12:00:00Z");
+}
+
+function groupWorkouts(logs){
+  var sorted = logs.slice().sort(function(a,b){ return effectiveTime(a)-effectiveTime(b); });
+  var workouts = [];
+  var cur = null;
+  sorted.forEach(function(l){
+    var t = effectiveTime(l);
+    if(!cur || t - cur.end > WORKOUT_GAP_MS){
+      cur = { start:t, end:t, logs:[] };
+      workouts.push(cur);
     }
-    localStorage.setItem("jernlog_migration_ezbarcurls_v1", "1");
-  }
+    cur.logs.push(l);
+    cur.end = t;
+  });
+  return workouts;
+}
 
-  if(!localStorage.getItem("jernlog_migration_muscle_v1")){
-    var idToMuscle = {
-      "weighted-pull-ups":"ryg","chest-supported-row-neutral":"ryg","chest-supported-row-wide":"ryg",
-      "rear-delt-flyes-cable":"bagskulder","pec-deck-rear-delt":"bagskulder",
-      "one-arm-cable-pushdown":"tricep","dumbbell-skullcrushers":"tricep",
-      "chin-ups":"ryg","bent-over-rows":"ryg","close-grip-lat-pulldown":"ryg","wide-grip-lat-pulldown":"ryg",
-      "rear-delt-flyes-single":"bagskulder",
-      "barbell-skullcrushers":"tricep","rope-pushdown-cable":"tricep","single-arm-tricep-pushdown":"tricep",
-      "leg-extension":"ben","squat":"ben","hamstring-curl":"ben","barbell-rdl":"ben",
-      "hip-abduction-adduction":"ben","calf-raise":"ben","bulgarian-split-squat":"ben","pendulum-squat":"ben","calf-raise-seated":"ben",
-      "leg-raises":"mave","cable-crunches":"mave","machine-crunches":"mave",
-      "bench-press":"bryst","incline-smith-press":"bryst","pec-deck":"bryst","incline-dumbbell-press":"bryst",
-      "dips":"bryst","cable-fly-upper":"bryst","cable-fly-mid":"bryst",
-      "lateral-raise-cable-single":"sideskulder","lateral-raise-lying":"sideskulder",
-      "shoulder-press-barbell":"forskulder","military-press-dumbbell":"forskulder",
-      "incline-dumbbell-curl":"biceps","dumbbell-preacher-machine":"biceps","ez-bar-curl":"biceps",
-      "bayesian-cable-curl":"biceps","hammer-curl-preacher":"biceps",
-      "ez-bar-curls":"biceps"
+/* Byg feed-venlige workout-objekter for én bruger, inkl. PR-markering.
+   PR = bedste sæt i træningen slår brugerens hidtil bedste for øvelsen (før træningen). */
+function buildUserWorkouts(userId, userLogs, exById){
+  var workouts = groupWorkouts(userLogs);
+  var bestSoFar = {}; // exerciseId -> score
+  var out = [];
+  workouts.forEach(function(w){
+    var byEx = {};
+    var orderEx = [];
+    w.logs.forEach(function(l){
+      if(!byEx[l.exerciseId]){ byEx[l.exerciseId] = []; orderEx.push(l.exerciseId); }
+      byEx[l.exerciseId].push(l);
+    });
+    var exSummaries = orderEx.map(function(exId){
+      var sets = byEx[exId].slice().sort(function(a,b){ return (a.setNumber||0)-(b.setNumber||0); });
+      var tracked = sets.filter(function(s){ return !s.skipped; });
+      var topScore = tracked.length ? Math.max.apply(null, tracked.map(setScore)) : null;
+      var prevBest = bestSoFar[exId];
+      var isPR = topScore!==null && prevBest!==undefined && topScore > prevBest;
+      if(topScore!==null && (prevBest===undefined || topScore > prevBest)) bestSoFar[exId] = topScore;
+      var exObj = exById[exId] || { id:exId, name:"(slettet øvelse)", bodyweight:false };
+      return { exId:exId, name:exObj.name, bodyweight:!!exObj.bodyweight, sets:sets, tracked:tracked, isPR:isPR };
+    });
+    out.push({ userId:userId, start:w.start, end:w.end, exercises:exSummaries, setCount:w.logs.length });
+  });
+  return out;
+}
+
+function workoutKeyISO(w){ return new Date(w.start).toISOString(); }
+
+/* =========================================================
+   VIEW: FEED
+   ========================================================= */
+function getAcceptedFriendIds(){
+  var me = session.user.id;
+  return sb.from("friendships").select("*").then(function(res){
+    if(res.error) throw res.error;
+    return (res.data||[]).filter(function(f){ return f.status==="accepted"; }).map(function(f){
+      return f.requester===me ? f.addressee : f.requester;
+    });
+  });
+}
+
+function renderFeed(){
+  state.viewUser = null;
+  main.innerHTML = '<h2 class="section">Feed</h2><div class="empty-state">Henter feed…</div>';
+  var me = session.user.id;
+  getAcceptedFriendIds().then(function(friendIds){
+    var ids = [me].concat(friendIds);
+    return Promise.all([
+      sb.from("profiles").select("*").in("id", ids),
+      fetchAllRows(function(){ return sb.from("logs").select("*").in("user_id", ids).order("logged_at", {ascending:false}).order("id"); }),
+      sb.from("exercises").select("*").in("user_id", ids),
+      sb.from("comments").select("*").in("target_user", ids).order("created_at", {ascending:true}).limit(1000),
+      Promise.resolve(friendIds)
+    ]);
+  }).then(function(res){
+    var profs = res[0], logRows = res[1], exRows = res[2], comRows = res[3], friendIds = res[4];
+    if(profs.error) throw profs.error;
+    if(exRows.error) throw exRows.error;
+
+    var nameById = {};
+    (profs.data||[]).forEach(function(p){ nameById[p.id] = p.username; });
+
+    var exByUser = {}; // userId -> {exId: exObj}
+    (exRows.data||[]).forEach(function(r){
+      if(!exByUser[r.user_id]) exByUser[r.user_id] = {};
+      exByUser[r.user_id][r.id] = rowToEx(r);
+    });
+
+    var logsByUser = {};
+    logRows.forEach(function(r){
+      var l = rowToLog(r);
+      if(!logsByUser[r.user_id]) logsByUser[r.user_id] = [];
+      logsByUser[r.user_id].push(l);
+    });
+
+    var allWorkouts = [];
+    Object.keys(logsByUser).forEach(function(uidKey){
+      allWorkouts = allWorkouts.concat(buildUserWorkouts(uidKey, logsByUser[uidKey], exByUser[uidKey]||{}));
+    });
+    allWorkouts.sort(function(a,b){ return b.start-a.start; });
+    allWorkouts = allWorkouts.slice(0, 30);
+
+    var commentsByKey = {};
+    ((comRows && comRows.data)||[]).forEach(function(c){
+      var key = c.target_user + "|" + Date.parse(c.workout_start);
+      if(!commentsByKey[key]) commentsByKey[key] = [];
+      commentsByKey[key].push(c);
+    });
+
+    var html = '<h2 class="section">Feed</h2>';
+    if(friendIds.length===0){
+      html += '<div class="card"><div class="muted" style="line-height:1.5;">Du har ingen venner endnu — tilføj en under <b>Venner</b> i menuen, så I kan se hinandens træninger her.</div></div>';
+    }
+    if(allWorkouts.length===0){
+      html += '<div class="card"><div class="empty-state">Ingen træninger endnu. Log din første øvelse! 🏋️</div></div>';
+      main.innerHTML = html;
+      return;
+    }
+
+    allWorkouts.forEach(function(w, wi){
+      var uname = nameById[w.userId] || "ukendt";
+      var isMe = w.userId===me;
+      var isLive = (Date.now() - w.end) < WORKOUT_GAP_MS;
+      var dateIso = new Date(w.start).toISOString().slice(0,10);
+      var durMin = Math.round((w.end - w.start)/60000);
+      var whenTxt;
+      if(isLive){
+        whenTxt = "Startede kl. "+fmtClock(w.start)+" · "+w.exercises.length+" øvelse"+(w.exercises.length===1?"":"r")+" indtil videre";
+      } else {
+        whenTxt = fmtDateDisplay(dateIso) + " · " + fmtClock(w.start) + (durMin>0 ? ("–"+fmtClock(w.end)+" · "+durMin+" min") : "") + " · " + w.exercises.length + " øvelse" + (w.exercises.length===1?"":"r");
+      }
+      var anyPR = w.exercises.some(function(x){ return x.isPR; });
+
+      html += '<div class="feed-card"'+(isLive?' style="border-color:var(--green);"':'')+'>';
+      html += '<div class="feed-head">';
+      html += '<div class="avatar">'+escapeHtml(uname.slice(0,1).toUpperCase())+'</div>';
+      html += '<div style="min-width:0;flex:1;">';
+      html += '<div class="feed-who"'+(isMe?'':' style="cursor:pointer;" data-gotouser="'+w.userId+'"')+'>'+escapeHtml(uname)+(isMe?' <span class="muted">(dig)</span>':'')+'</div>';
+      html += '<div class="feed-when">'+whenTxt+'</div>';
+      html += '</div>';
+      if(isLive) html += '<span class="live-badge"><span class="live-dot"></span>I gang nu</span>';
+      else if(anyPR) html += '<span class="pr-badge">🏆 PR</span>';
+      html += '</div>';
+
+      w.exercises.forEach(function(x){
+        var setsTxt;
+        if(x.tracked.length===0){
+          setsTxt = "sprunget over";
+        } else {
+          setsTxt = x.tracked.map(function(s){ return formatSetShort(s, x.bodyweight); }).join(", ");
+        }
+        html += '<div class="feed-ex-line">';
+        html += '<div class="feed-ex-name">'+escapeHtml(x.name)+(x.isPR?' <span class="pr-badge" style="font-size:10px;padding:2px 6px;">🏆 PR</span>':'')+'</div>';
+        html += '<div class="feed-ex-sets">'+escapeHtml(setsTxt)+'</div>';
+        html += '</div>';
+      });
+
+      var key = w.userId + "|" + w.start;
+      var comments = commentsByKey[key] || [];
+      if(comments.length){
+        html += '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:4px;">';
+        comments.forEach(function(c){
+          html += '<div class="comment-line"><span class="comment-author">'+escapeHtml(nameById[c.author]||"ukendt")+'</span><span class="comment-body">'+escapeHtml(c.body)+'</span></div>';
+        });
+        html += '</div>';
+      }
+      html += '<div class="comment-input-row"><input type="text" id="cin_'+wi+'" placeholder="Skriv en kommentar…" maxlength="500"><button class="comment-send" data-wi="'+wi+'">Send</button></div>';
+      html += '</div>';
+    });
+
+    main.innerHTML = html;
+
+    main.querySelectorAll("[data-gotouser]").forEach(function(el){
+      el.addEventListener("click", function(){
+        goto("friendProfile", {viewUser: el.getAttribute("data-gotouser")});
+      });
+    });
+    main.querySelectorAll(".comment-send").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var wi = parseInt(btn.getAttribute("data-wi"),10);
+        var w = allWorkouts[wi];
+        var input = document.getElementById("cin_"+wi);
+        var body = (input.value||"").trim();
+        if(!body) return;
+        btn.disabled = true;
+        sb.from("comments").insert({
+          target_user: w.userId,
+          workout_start: workoutKeyISO(w),
+          author: me,
+          body: body
+        }).then(function(res){
+          if(res.error){ showToast("Kunne ikke sende kommentar"); btn.disabled=false; return; }
+          renderFeed();
+        });
+      });
+    });
+  }).catch(function(err){
+    main.innerHTML = '<h2 class="section">Feed</h2><div class="card"><div class="empty-state">Kunne ikke hente feedet — tjek din internetforbindelse.</div></div>';
+  });
+}
+
+/* =========================================================
+   VIEW: VENNER
+   ========================================================= */
+function renderFriends(){
+  state.viewUser = null;
+  main.innerHTML = '<h2 class="section">Venner</h2><div class="empty-state">Henter…</div>';
+  var me = session.user.id;
+  sb.from("friendships").select("*").then(function(fres){
+    if(fres.error) throw fres.error;
+    var rows = fres.data||[];
+    var otherIds = rows.map(function(f){ return f.requester===me ? f.addressee : f.requester; });
+    var idsToName = [me].concat(otherIds);
+    return sb.from("profiles").select("*").in("id", idsToName).then(function(pres){
+      if(pres.error) throw pres.error;
+      draw(rows, pres.data||[]);
+    });
+  }).catch(function(){
+    main.innerHTML = '<h2 class="section">Venner</h2><div class="card"><div class="empty-state">Kunne ikke hente venner — tjek internet.</div></div>';
+  });
+
+  function draw(rows, profiles){
+    var nameById = {};
+    profiles.forEach(function(p){ nameById[p.id] = p.username; });
+    var incoming = rows.filter(function(f){ return f.status==="pending" && f.addressee===me; });
+    var outgoing = rows.filter(function(f){ return f.status==="pending" && f.requester===me; });
+    var accepted = rows.filter(function(f){ return f.status==="accepted"; });
+
+    var html = '<h2 class="section">Venner</h2>';
+
+    /* Søg og tilføj */
+    html += '<div class="card">';
+    html += '<label class="field-label">Tilføj en ven (søg på brugernavn)</label>';
+    html += '<div class="row"><input type="text" id="friendSearch" autocomplete="off" autocapitalize="off" placeholder="fx anders"><button class="btn small primary" id="friendSearchBtn" style="flex:0 0 auto;">Søg</button></div>';
+    html += '<div id="friendSearchResults"></div>';
+    html += '</div>';
+
+    if(incoming.length){
+      html += '<h2 class="section">Anmodninger til dig</h2>';
+      html += '<div class="card" style="padding:0;">';
+      incoming.forEach(function(f){
+        html += '<div class="list-row"><div class="name">'+escapeHtml(nameById[f.requester]||"ukendt")+'</div>';
+        html += '<div style="display:flex;gap:8px;"><button class="pill-btn" data-accept="'+f.id+'">Acceptér</button><button class="pill-btn ghost" data-declinefr="'+f.id+'">Afvis</button></div></div>';
+      });
+      html += '</div>';
+    }
+
+    if(outgoing.length){
+      html += '<h2 class="section">Sendte anmodninger</h2>';
+      html += '<div class="card" style="padding:0;">';
+      outgoing.forEach(function(f){
+        html += '<div class="list-row"><div><div class="name">'+escapeHtml(nameById[f.addressee]||"ukendt")+'</div><div class="muted">Afventer svar…</div></div>';
+        html += '<button class="pill-btn dim" data-declinefr="'+f.id+'">Fortryd</button></div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<h2 class="section">Dine venner</h2>';
+    if(accepted.length===0){
+      html += '<div class="card"><div class="empty-state">Ingen venner endnu — søg efter et brugernavn ovenfor. 👆</div></div>';
+    } else {
+      html += '<div class="card" style="padding:0;">';
+      accepted.forEach(function(f){
+        var otherId = f.requester===me ? f.addressee : f.requester;
+        html += '<div class="list-row"><div class="name" data-gotouser="'+otherId+'" style="cursor:pointer;flex:1;">'+escapeHtml(nameById[otherId]||"ukendt")+'</div>';
+        html += '<div style="display:flex;gap:8px;align-items:center;"><button class="pill-btn dim" data-declinefr="'+f.id+'">Fjern</button><span class="chev" data-gotouser="'+otherId+'">›</span></div></div>';
+      });
+      html += '</div>';
+    }
+
+    main.innerHTML = html;
+
+    /* Søgning */
+    function doFriendSearch(){
+      var q = document.getElementById("friendSearch").value.trim().toLowerCase();
+      var box = document.getElementById("friendSearchResults");
+      if(q.length<2){ box.innerHTML = '<div class="muted" style="margin-top:8px;">Skriv mindst 2 tegn.</div>'; return; }
+      box.innerHTML = '<div class="muted" style="margin-top:8px;">Søger…</div>';
+      sb.from("profiles").select("*").ilike("username", "%"+q+"%").limit(10).then(function(res){
+        if(res.error){ box.innerHTML = '<div class="muted" style="margin-top:8px;">Søgning fejlede.</div>'; return; }
+        var hits = (res.data||[]).filter(function(p){ return p.id!==me; });
+        if(hits.length===0){ box.innerHTML = '<div class="muted" style="margin-top:8px;">Ingen brugere fundet med "'+escapeHtml(q)+'".</div>'; return; }
+        var out = '<div class="search-results">';
+        hits.forEach(function(p){
+          var rel = rows.find(function(f){ return (f.requester===me&&f.addressee===p.id)||(f.requester===p.id&&f.addressee===me); });
+          var action;
+          if(rel && rel.status==="accepted") action = '<span class="friend-status">✓ Venner</span>';
+          else if(rel && rel.requester===me) action = '<span class="friend-status">Afventer…</span>';
+          else if(rel) action = '<button class="pill-btn" data-accept="'+rel.id+'">Acceptér</button>';
+          else action = '<button class="pill-btn" data-request="'+p.id+'">Anmod</button>';
+          out += '<div class="search-result-item"><span>'+escapeHtml(p.username)+'</span>'+action+'</div>';
+        });
+        out += '</div>';
+        box.innerHTML = out;
+        attachFriendActions(box);
+      });
+    }
+    document.getElementById("friendSearchBtn").addEventListener("click", doFriendSearch);
+    document.getElementById("friendSearch").addEventListener("keydown", function(e){ if(e.key==="Enter") doFriendSearch(); });
+
+    attachFriendActions(main);
+
+    main.querySelectorAll("[data-gotouser]").forEach(function(el){
+      el.addEventListener("click", function(){
+        goto("friendProfile", {viewUser: el.getAttribute("data-gotouser")});
+      });
+    });
+
+    function attachFriendActions(root){
+      root.querySelectorAll("[data-request]").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          btn.disabled = true;
+          sb.from("friendships").insert({ requester: me, addressee: btn.getAttribute("data-request"), status:"pending" }).then(function(res){
+            if(res.error){ showToast("Kunne ikke sende anmodning"); btn.disabled=false; return; }
+            showToast("Anmodning sendt ✓");
+            renderFriends();
+          });
+        });
+      });
+      root.querySelectorAll("[data-accept]").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          btn.disabled = true;
+          sb.from("friendships").update({ status:"accepted" }).eq("id", btn.getAttribute("data-accept")).then(function(res){
+            if(res.error){ showToast("Kunne ikke acceptere"); btn.disabled=false; return; }
+            showToast("I er nu venner! 🎉");
+            renderFriends();
+          });
+        });
+      });
+      root.querySelectorAll("[data-declinefr]").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          if(!confirm("Er du sikker?")) return;
+          btn.disabled = true;
+          sb.from("friendships").delete().eq("id", btn.getAttribute("data-declinefr")).then(function(res){
+            if(res.error){ showToast("Handlingen fejlede"); btn.disabled=false; return; }
+            renderFriends();
+          });
+        });
+      });
+    }
+  }
+}
+
+/* =========================================================
+   VIEW: VENNE-PROFIL (read-only)
+   ========================================================= */
+function renderFriendProfile(userId){
+  if(!userId){ goto("friends"); return; }
+  main.innerHTML = '<div class="empty-state" style="padding-top:60px;">Henter profil…</div>';
+  Promise.all([
+    sb.from("profiles").select("*").eq("id", userId).maybeSingle(),
+    sb.from("exercises").select("*").eq("user_id", userId),
+    fetchAllRows(function(){ return sb.from("logs").select("*").eq("user_id", userId).order("id"); })
+  ]).then(function(res){
+    var prof = res[0], exRes = res[1], logRows = res[2];
+    if(prof.error || !prof.data || exRes.error) throw (prof.error||exRes.error||new Error("no profile"));
+    friendCache = {
+      userId: userId,
+      username: prof.data.username,
+      ex: (exRes.data||[]).map(rowToEx),
+      logs: logRows.map(rowToLog)
     };
-    var exList2 = loadEx();
-    var changed = false;
-    exList2.forEach(function(e){
-      if(!e.muscle && idToMuscle[e.id]){
-        e.muscle = idToMuscle[e.id];
-        changed = true;
-      }
-    });
-    if(changed) saveEx(exList2);
-    localStorage.setItem("jernlog_migration_muscle_v1", "1");
-  }
+    state.viewUser = userId;
+    state.friendCalMonth = null;
+    state.friendCalSelectedDay = null;
+    draw();
+  }).catch(function(){
+    main.innerHTML = '<div class="card"><div class="empty-state">Kunne ikke hente profilen — er I stadig venner?</div></div>';
+  });
 
-  if(!localStorage.getItem("jernlog_migration_ezbarcurls_datefix_v1")){
-    // Den oprindelige EZ-bar curls-migration brugte "dags dato" på det tidspunkt
-    // migrationen faktisk kørte på telefonen (ikke dengang den blev bedt om) —
-    // det gjorde at de 2 auto-loggede sæt fejlagtigt dukkede op som "logget i dag",
-    // hvilket forvirrede både "Foreslået i dag" og historik-sorteringen.
-    // Her rettes datoen til en fast, neutral dato i stedet.
-    var logs3 = loadLogs();
-    var fixedAny = false;
-    logs3.forEach(function(l){
-      if(l.exerciseId==="ez-bar-curls" && !l.loggedAt){
-        l.date = "2026-06-20";
-        l.loggedAt = 1;
-        fixedAny = true;
-      }
+  function draw(){
+    var ex = friendCache.ex;
+    var logs = friendCache.logs;
+    var loggedIds = {};
+    logs.forEach(function(l){ loggedIds[l.exerciseId]=true; });
+
+    var workouts = groupWorkouts(logs);
+    var lastDateFor = {};
+    ex.forEach(function(e){
+      if(!loggedIds[e.id]) return;
+      var sess = sessionsForExercise(e.id, null, logs);
+      lastDateFor[e.id] = sess.length ? sess[sess.length-1].date : "";
     });
-    if(fixedAny) saveLogs(logs3);
-    localStorage.setItem("jernlog_migration_ezbarcurls_datefix_v1", "1");
+    var list = ex.filter(function(e){ return loggedIds[e.id]; }).sort(function(a,b){
+      var da = lastDateFor[a.id]||"", db = lastDateFor[b.id]||"";
+      if(da!==db) return da<db ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    });
+
+    var html = '<div class="back-btn" id="backToFriends">‹ Venner</div>';
+    html += '<div class="feed-head" style="margin-bottom:14px;">';
+    html += '<div class="avatar" style="width:46px;height:46px;font-size:20px;flex-basis:46px;">'+escapeHtml((friendCache.username||"?").slice(0,1).toUpperCase())+'</div>';
+    html += '<div><div style="font-weight:800;font-size:18px;">'+escapeHtml(friendCache.username)+'</div>';
+    html += '<div class="muted">'+workouts.length+' træning'+(workouts.length===1?'':'er')+' · '+list.length+' øvelse'+(list.length===1?'':'r')+'</div></div>';
+    html += '</div>';
+
+    /* Vennens kalender + stats */
+    if(!state.friendCalMonth){ var nnow = new Date(); state.friendCalMonth = {y: nnow.getFullYear(), m: nnow.getMonth()}; }
+    var fy = state.friendCalMonth.y, fm = state.friendCalMonth.m;
+    var fset = trainedDateSet(logs);
+    var fstreaks = streakStats(fset);
+    var fMonthCount = monthTrainedCount(fset, fy, fm);
+    html += '<div class="card">';
+    html += '<div class="cal-head"><div><div class="cal-title">'+MONTH_NAMES[fm]+' '+fy+'</div><div class="cal-sub">'+fMonthCount+' dag'+(fMonthCount===1?'':'e')+' trænet denne måned</div></div>';
+    html += '<div class="cal-nav"><button id="fcalPrev">‹</button><button id="fcalNext">›</button></div></div>';
+    html += calendarGridHtml(fy, fm, fset);
+    html += '</div>';
+    html += '<div class="stat-grid">';
+    html += '<div class="stat-box"><div class="stat-num">'+fstreaks.best+'</div><div class="stat-label">FLEST DAGE I TRÆK</div></div>';
+    html += '<div class="stat-box"><div class="stat-num">'+workouts.length+'</div><div class="stat-label">TRÆNINGER I ALT</div></div>';
+    html += '</div>';
+    if(state.friendCalSelectedDay){
+      html += dayDetailHtml(state.friendCalSelectedDay, logs, ex);
+    }
+
+    if(list.length===0){
+      html += '<div class="card"><div class="empty-state">'+escapeHtml(friendCache.username)+' har ikke logget noget endnu.</div></div>';
+    } else {
+      html += '<h2 class="section">Øvelser & statistik</h2>';
+      html += '<div class="card" style="padding:0;">';
+      list.forEach(function(e){
+        var best = allTimeBest(e.id, logs);
+        var bestTxt = best && best.topSet ? (" · Bedste: "+formatSetShort(best.topSet, e.bodyweight)) : "";
+        html += '<div class="list-row" data-id="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">Sidst: '+fmtDateDisplay(lastDateFor[e.id])+bestTxt+'</div></div><div class="chev">›</div></div>';
+      });
+      html += '</div>';
+    }
+
+    main.innerHTML = html;
+    document.getElementById("backToFriends").addEventListener("click", function(){ state.viewUser=null; goto("friends"); });
+    document.getElementById("fcalPrev").addEventListener("click", function(){
+      state.friendCalSelectedDay = null;
+      state.friendCalMonth = fm===0 ? {y:fy-1, m:11} : {y:fy, m:fm-1};
+      draw();
+      window.scrollTo(0,0);
+    });
+    document.getElementById("fcalNext").addEventListener("click", function(){
+      state.friendCalSelectedDay = null;
+      state.friendCalMonth = fm===11 ? {y:fy+1, m:0} : {y:fy, m:fm+1};
+      draw();
+      window.scrollTo(0,0);
+    });
+    main.querySelectorAll("[data-caldate]").forEach(function(cell){
+      cell.addEventListener("click", function(){
+        state.friendCalSelectedDay = cell.getAttribute("data-caldate");
+        draw();
+      });
+    });
+    main.querySelectorAll(".list-row[data-id]").forEach(function(row){
+      row.addEventListener("click", function(){
+        goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-id"), viewUser: friendCache.userId});
+      });
+    });
   }
+}
+
+/* =========================================================
+   VIEW: KOMMENTARER (samtaler + svar + ulæst-markering)
+   ========================================================= */
+function renderCommentsPage(){
+  state.viewUser = null;
+  main.innerHTML = '<h2 class="section">Kommentarer</h2><div class="empty-state">Henter…</div>';
+  var me = session.user.id;
+  Promise.all([
+    sb.from("comments").select("*").order("created_at", {ascending:true}).limit(1000),
+    sb.from("profiles").select("*")
+  ]).then(function(res){
+    if(res[0].error) throw res[0].error;
+    var all = res[0].data||[];
+    var nameById = {};
+    ((res[1] && res[1].data)||[]).forEach(function(p){ nameById[p.id] = p.username; });
+    var mine = myConversationComments(all);
+    var seen = getCommentsSeen();
+
+    var groups = {};
+    mine.forEach(function(c){
+      var k = c.target_user + "|" + c.workout_start;
+      if(!groups[k]) groups[k] = [];
+      groups[k].push(c);
+    });
+    var keys = Object.keys(groups).sort(function(a,b){
+      var la = groups[a][groups[a].length-1], lb = groups[b][groups[b].length-1];
+      return Date.parse(lb.created_at) - Date.parse(la.created_at);
+    });
+
+    var html = '<h2 class="section">Kommentarer</h2>';
+    if(keys.length===0){
+      html += '<div class="card"><div class="empty-state">Ingen kommentarer endnu.<br>Kommentér en træning i feedet! 💬</div></div>';
+    }
+    keys.forEach(function(k, ki){
+      var cs = groups[k];
+      var target = cs[0].target_user;
+      var ws = Date.parse(cs[0].workout_start);
+      var who = target===me ? "Din træning" : escapeHtml((nameById[target]||"ukendt"))+"s træning";
+      html += '<div class="feed-card">';
+      html += '<div class="conv-title">'+who+'</div>';
+      html += '<div class="conv-when">'+fmtDateDisplay(new Date(ws).toISOString().slice(0,10))+' · kl. '+fmtClock(ws)+'</div>';
+      cs.forEach(function(c){
+        var isNew = c.author!==me && Date.parse(c.created_at) > seen;
+        html += '<div class="comment-line"><span class="comment-author">'+escapeHtml(nameById[c.author]||"ukendt")+'</span><span class="comment-body">'+escapeHtml(c.body)+(isNew?'<span class="new-dot"></span>':'')+'</span></div>';
+      });
+      html += '<div class="comment-input-row"><input type="text" id="rin_'+ki+'" placeholder="Svar…" maxlength="500"><button class="comment-send" data-k="'+ki+'">Send</button></div>';
+      html += '</div>';
+    });
+    main.innerHTML = html;
+
+    /* markér som læst nu hvor de er vist */
+    setCommentsSeenNow();
+    refreshMenuBadges();
+
+    main.querySelectorAll(".comment-send").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var ki = parseInt(btn.getAttribute("data-k"),10);
+        var cs = groups[keys[ki]];
+        var input = document.getElementById("rin_"+ki);
+        var body = (input.value||"").trim();
+        if(!body) return;
+        btn.disabled = true;
+        sb.from("comments").insert({
+          target_user: cs[0].target_user,
+          workout_start: cs[0].workout_start,
+          author: me,
+          body: body
+        }).then(function(res2){
+          if(res2.error){ showToast("Kunne ikke sende svar"); btn.disabled = false; return; }
+          renderCommentsPage();
+        });
+      });
+    });
+  }).catch(function(){
+    main.innerHTML = '<h2 class="section">Kommentarer</h2><div class="card"><div class="empty-state">Kunne ikke hente — tjek din internetforbindelse.</div></div>';
+  });
 }
 
 /* ---------------- Luk tastatur ved tryk udenfor et felt ---------------- */
@@ -1391,9 +2471,24 @@ document.addEventListener("mousedown", function(e){
 });
 
 /* ---------------- Init ---------------- */
-seedIfNeeded();
-runMigrations();
-render();
+function init(){
+  if(!sb){
+    main.innerHTML = '<div class="empty-state" style="padding-top:60px;">Kunne ikke oprette forbindelse til skyen.<br>Tjek din internetforbindelse og genindlæs appen.</div>';
+    return;
+  }
+  sb.auth.onAuthStateChange(function(event, s){
+    if(event==="SIGNED_OUT"){ session = null; }
+    else if(s) session = s;
+  });
+  sb.auth.getSession().then(function(res){
+    session = (res.data && res.data.session) || null;
+    if(session) bootAfterLogin();
+    else renderLogin("in");
+  }).catch(function(){
+    renderLogin("in");
+  });
+}
+init();
 
 })();
 </script>
