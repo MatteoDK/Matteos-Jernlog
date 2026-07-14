@@ -203,6 +203,10 @@
   /* Hvordan-links på øvelsesside */
   .howto-row{display:flex;gap:10px;margin:10px 0 14px;}
   .howto-link{flex:1;text-align:center;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:11px 8px;color:var(--yellow);font-weight:700;font-size:13px;text-decoration:none;}
+
+  /* Træk-og-slip rækkefølge på Øvelser-siden */
+  .reorder-list .list-row{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
+  .list-row.dragging{opacity:0.75;background:var(--bg-elevated);outline:2px solid var(--yellow);border-radius:10px;position:relative;z-index:10;}
 </style>
 </head>
 <body>
@@ -335,11 +339,14 @@ function getExerciseById(id){
 }
 
 /* ---------- Mapping mellem app-format og database-rækker ---------- */
+var HAS_POSITION_COL = true; /* sættes ved boot — falder pænt tilbage hvis kolonnen mangler */
 function exToRow(e){
-  return { user_id: session.user.id, id: e.id, name: e.name, bodyweight: !!e.bodyweight, muscle: e.muscle||null, variant: e.variant||null };
+  var row = { user_id: session.user.id, id: e.id, name: e.name, bodyweight: !!e.bodyweight, muscle: e.muscle||null, variant: e.variant||null };
+  if(HAS_POSITION_COL) row.position = (e.position===undefined||e.position===null) ? null : e.position;
+  return row;
 }
 function rowToEx(r){
-  return { id: r.id, name: r.name, bodyweight: !!r.bodyweight, muscle: r.muscle||null, variant: r.variant||null };
+  return { id: r.id, name: r.name, bodyweight: !!r.bodyweight, muscle: r.muscle||null, variant: r.variant||null, position: (r.position===undefined||r.position===null) ? null : parseFloat(r.position) };
 }
 function logToRow(l){
   return {
@@ -821,10 +828,18 @@ function maybeMigrateLocalData(){
     });
 }
 
+function detectColumns(){
+  return sb.from("exercises").select("position").limit(1).then(function(res){
+    HAS_POSITION_COL = !res.error;
+  }).catch(function(){ HAS_POSITION_COL = false; });
+}
+
 function bootAfterLogin(){
   document.getElementById("menuBtn").style.display = "flex";
   renderLoadingScreen("Henter dine data…");
   ensureProfile().then(function(){
+    return detectColumns();
+  }).then(function(){
     return flushPendingSnapshot();
   }).then(function(){
     return fetchOwnData();
@@ -1574,9 +1589,13 @@ function renderExercisesPage(){
   var ex = loadEx();
   var html = '<h2 class="section">Øvelser</h2>';
   html += '<button class="btn" id="addExBtn" style="margin-bottom:6px;">＋ Tilføj ny øvelse</button>';
+  html += '<div class="muted" style="margin-bottom:10px;text-align:center;">Hold en øvelse inde og træk den op/ned for at ændre rækkefølgen i en liste.</div>';
 
   function sortInGroup(arr, grp){
     return arr.slice().sort(function(a,b){
+      var pa = (a.position===null||a.position===undefined) ? Infinity : a.position;
+      var pb = (b.position===null||b.position===undefined) ? Infinity : b.position;
+      if(pa!==pb) return pa-pb;
       var ma = grp.muscles.indexOf(a.muscle), mb = grp.muscles.indexOf(b.muscle);
       if(ma!==mb) return ma-mb;
       return a.name.localeCompare(b.name);
@@ -1584,9 +1603,9 @@ function renderExercisesPage(){
   }
   function listHtml(arr, grp){
     if(arr.length===0) return '<div class="card" style="margin-top:0;margin-bottom:16px;"><div class="muted" style="text-align:center;">(tom — tryk Rediger for at tilføje øvelser)</div></div>';
-    var out = '<div class="card" style="padding:0;margin-top:0;margin-bottom:16px;">';
+    var out = '<div class="card reorder-list" style="padding:0;margin-top:0;margin-bottom:16px;">';
     sortInGroup(arr, grp).forEach(function(e){
-      out += '<div class="list-row" data-exid="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">'+(MUSCLE_LABELS[e.muscle]||"")+(e.bodyweight?' · Kropsvægt':'')+'</div></div><div class="chev">›</div></div>';
+      out += '<div class="list-row" data-exid="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">'+(MUSCLE_LABELS[e.muscle]||"")+(e.bodyweight?' · Kropsvægt':'')+'</div></div><div class="chev">≡&nbsp;&nbsp;›</div></div>';
     });
     out += '</div>';
     return out;
@@ -1632,9 +1651,11 @@ function renderExercisesPage(){
   document.getElementById("addExBtn").addEventListener("click", function(){ openAddExerciseModal(""); });
   main.querySelectorAll("[data-exid]").forEach(function(row){
     row.addEventListener("click", function(){
+      if(Date.now() - lastReorderEnd < 500) return; /* var et træk, ikke et tryk */
       goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-exid"), viewUser:null, histBack:"exercises"});
     });
   });
+  main.querySelectorAll(".reorder-list").forEach(function(cont){ attachListReorder(cont); });
   main.querySelectorAll("[data-catid]").forEach(function(row){
     row.addEventListener("click", function(){
       openEditExerciseModal(row.getAttribute("data-catid"), function(){ renderExercisesPage(); });
@@ -1645,6 +1666,101 @@ function renderExercisesPage(){
       openEditListModal(parseInt(btn.getAttribute("data-group"),10), btn.getAttribute("data-editlist"));
     });
   });
+}
+
+/* ---------- Træk-og-slip rækkefølge i en liste ---------- */
+var lastReorderEnd = 0;
+
+function persistListOrder(orderedIds){
+  var posById = {};
+  orderedIds.forEach(function(id, i){ posById[id] = i+1; });
+  var changed = false;
+  var list = loadEx().map(function(e){
+    if(posById[e.id]!==undefined && e.position!==posById[e.id]){
+      changed = true;
+      return Object.assign({}, e, {position: posById[e.id]});
+    }
+    return e;
+  });
+  if(changed){
+    saveEx(list);
+    showToast("Rækkefølge gemt ✓");
+  }
+}
+
+function attachListReorder(container){
+  var pressTimer = null;
+  var dragging = null;
+  var startY = 0;
+
+  function rowsOf(){ return Array.prototype.slice.call(container.querySelectorAll(".list-row[data-exid]")); }
+  function pointY(e){ return (e.touches && e.touches.length) ? e.touches[0].clientY : e.clientY; }
+
+  function startDrag(row){
+    dragging = row;
+    row.classList.add("dragging");
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("touchmove", onMove, {passive:false});
+    document.addEventListener("touchend", onUp);
+  }
+  function stopListeners(){
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    document.removeEventListener("touchmove", onMove, {passive:false});
+    document.removeEventListener("touchend", onUp);
+  }
+  function onMove(e){
+    if(!dragging) return;
+    if(e.cancelable) e.preventDefault(); /* stop siden i at scrolle imens */
+    var y = pointY(e);
+    rowsOf().forEach(function(other){
+      if(other===dragging) return;
+      var r = other.getBoundingClientRect();
+      var mid = r.top + r.height/2;
+      var dRect = dragging.getBoundingClientRect();
+      if(y < mid && dRect.top > r.top){
+        container.insertBefore(dragging, other);
+      } else if(y > mid && dRect.top < r.top){
+        container.insertBefore(dragging, other.nextSibling);
+      }
+    });
+  }
+  function onUp(){
+    if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+    if(!dragging) return;
+    dragging.classList.remove("dragging");
+    dragging = null;
+    stopListeners();
+    lastReorderEnd = Date.now();
+    persistListOrder(rowsOf().map(function(r){ return r.getAttribute("data-exid"); }));
+  }
+  function onDown(e){
+    var row = e.target && e.target.closest ? e.target.closest(".list-row[data-exid]") : null;
+    if(!row || row.parentNode!==container) return;
+    startY = pointY(e);
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(function(){ startDrag(row); }, 350);
+    /* fortryd langt tryk hvis man begynder at scrolle inden tiden er gået */
+    var cancelMove = function(ev){
+      if(dragging) return;
+      if(Math.abs(pointY(ev)-startY) > 12 && pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+    };
+    var cancelUp = function(){
+      if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+      document.removeEventListener("mousemove", cancelMove);
+      document.removeEventListener("touchmove", cancelMove);
+      document.removeEventListener("mouseup", cancelUp);
+      document.removeEventListener("touchend", cancelUp);
+      if(dragging) onUp();
+    };
+    document.addEventListener("mousemove", cancelMove);
+    document.addEventListener("touchmove", cancelMove);
+    document.addEventListener("mouseup", cancelUp);
+    document.addEventListener("touchend", cancelUp);
+  }
+  container.addEventListener("mousedown", onDown);
+  container.addEventListener("touchstart", onDown, {passive:true});
 }
 
 /* Redigér hvilke øvelser der er med i Liste A eller B for en muskelgruppe */
