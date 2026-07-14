@@ -215,12 +215,12 @@
   <div class="menu-overlay" id="menuOverlay">
     <div class="menu-panel">
       <div class="menu-item" data-view="log"><span class="ic">🏋️</span> Log øvelse</div>
-      <div class="menu-item" data-view="feed"><span class="ic">📣</span> Feed</div>
       <div class="menu-item" data-view="history"><span class="ic">📈</span> Historik/Statistik</div>
+      <div class="menu-item" data-view="feed"><span class="ic">📣</span> Feed</div>
+      <div class="menu-item" data-view="comments"><span class="ic">💬</span> Kommentarer <span class="req-dot" id="commentDot" style="display:none;">0</span></div>
       <div class="menu-item" data-view="exercises"><span class="ic">📋</span> Øvelser</div>
       <div class="menu-item" data-view="calendar"><span class="ic">📅</span> Kalender</div>
       <div class="menu-item" data-view="wins"><span class="ic">🔥</span> Wins & Plateaus</div>
-      <div class="menu-item" data-view="comments"><span class="ic">💬</span> Kommentarer <span class="req-dot" id="commentDot" style="display:none;">0</span></div>
       <div class="menu-item" data-view="friends"><span class="ic">👥</span> Venner <span class="req-dot" id="friendReqDot" style="display:none;">0</span></div>
       <div class="menu-item" id="menuLogout"><span class="ic">🚪</span> Log ud <span class="muted" id="menuUser" style="margin-left:auto;font-size:12px;"></span></div>
     </div>
@@ -520,7 +520,7 @@ function trendArrow(t){
 }
 
 /* ---------------- Router / state ---------------- */
-var state = { view:"log", selectedExerciseId:null, viewUser:null, histBack:"history", calMonth:null, friendCalMonth:null, calSelectedDay:null };
+var state = { view:"log", selectedExerciseId:null, viewUser:null, histBack:"history", calMonth:null, friendCalMonth:null, calSelectedDay:null, feedExpanded:{}, feedFocus:null };
 var main = document.getElementById("main");
 
 function render(){
@@ -733,23 +733,31 @@ function renderLoadingScreen(msg){
   main.innerHTML = '<div class="empty-state" style="padding-top:70px;font-size:15px;">'+escapeHtml(msg||"Henter dine data…")+'</div>';
 }
 
-/* Sikr at der findes en profil-række (brugernavn) for kontoen */
+/* Sikr at der findes en profil-række (brugernavn + email) for kontoen */
 function ensureProfile(){
   return sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle().then(function(res){
-    if(res.data){ myProfile = res.data; return true; }
+    if(res.data){
+      myProfile = res.data;
+      /* backfill: ældre profiler mangler email-feltet */
+      if(!myProfile.email && session.user.email){
+        myProfile.email = session.user.email;
+        sb.from("profiles").update({ email: session.user.email }).eq("id", session.user.id).then(function(){});
+      }
+      return true;
+    }
     var uname = (session.user.user_metadata && session.user.user_metadata.username) || "";
     return tryInsertProfile(uname);
   });
 }
 function tryInsertProfile(uname){
   if(!/^[a-z0-9æøå_.-]{2,20}$/.test(uname)) return promptUsername(uname);
-  return sb.from("profiles").insert({ id: session.user.id, username: uname }).then(function(res){
+  return sb.from("profiles").insert({ id: session.user.id, username: uname, email: session.user.email||null }).then(function(res){
     if(res.error){
       if(String(res.error.code)==="23505") return promptUsername(uname); // optaget
       showToast("Kunne ikke gemme profil: "+(res.error.message||""));
       return promptUsername(uname);
     }
-    myProfile = { id: session.user.id, username: uname };
+    myProfile = { id: session.user.id, username: uname, email: session.user.email||null };
     return true;
   });
 }
@@ -823,6 +831,9 @@ function bootAfterLogin(){
   }).then(function(){
     return maybeMigrateLocalData();
   }).then(function(){
+    return maybeSeedCatalog();
+  }).then(function(){
+    maybeFixEzbarStartdata();
     maybeMigrateVariants();
     updateMenuActive();
     goto("log");
@@ -945,7 +956,7 @@ function muscleSelectHtml(selectedMuscle, selectId){
 }
 
 function variantToggleHtml(toggleId, selected){
-  var html = '<div class="field"><label class="field-label">Liste på Øvelser-siden (valgfri)</label>';
+  var html = '<div class="field"><label class="field-label">Liste på Øvelser-siden (intet valg = Liste C)</label>';
   html += '<div class="toggle-group" id="'+toggleId+'">';
   [["a","Liste A"],["b","Liste B"],["ab","Begge"]].forEach(function(p){
     html += '<div class="toggle-opt'+(selected===p[0]?' selected':'')+'" data-var="'+p[0]+'">'+p[1]+'</div>';
@@ -1554,13 +1565,15 @@ function renderGraphSVG(sessionsAll, bodyweight){
 /* =========================================================
    VIEW: ØVELSER (grupperet efter muskel, med Liste A/B)
    ========================================================= */
+function variantHas(e, letter){
+  return String(e.variant||"").indexOf(letter)!==-1;
+}
+
 function renderExercisesPage(){
   state.viewUser = null;
   var ex = loadEx();
   var html = '<h2 class="section">Øvelser</h2>';
   html += '<button class="btn" id="addExBtn" style="margin-bottom:6px;">＋ Tilføj ny øvelse</button>';
-
-  var usedIds = {};
 
   function sortInGroup(arr, grp){
     return arr.slice().sort(function(a,b){
@@ -1570,6 +1583,7 @@ function renderExercisesPage(){
     });
   }
   function listHtml(arr, grp){
+    if(arr.length===0) return '<div class="card" style="margin-top:0;margin-bottom:16px;"><div class="muted" style="text-align:center;">(tom — tryk Rediger for at tilføje øvelser)</div></div>';
     var out = '<div class="card" style="padding:0;margin-top:0;margin-bottom:16px;">';
     sortInGroup(arr, grp).forEach(function(e){
       out += '<div class="list-row" data-exid="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">'+(MUSCLE_LABELS[e.muscle]||"")+(e.bodyweight?' · Kropsvægt':'')+'</div></div><div class="chev">›</div></div>';
@@ -1577,32 +1591,38 @@ function renderExercisesPage(){
     out += '</div>';
     return out;
   }
+  function listHeader(label, grpIdx, letter){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="train-tag" style="margin-bottom:0;">'+label+'</div><button class="pill-btn dim" data-editlist="'+letter+'" data-group="'+grpIdx+'">Rediger</button></div>';
+  }
 
-  MUSCLE_GROUPS_BY_DAY.forEach(function(grp){
-    var inGroup = ex.filter(function(e){ return e.muscle && grp.muscles.indexOf(e.muscle)!==-1; });
-    inGroup.forEach(function(e){ usedIds[e.id]=true; });
-    if(inGroup.length===0) return;
-    html += '<h2 class="section">'+escapeHtml(grp.title)+'</h2>';
-    var listA = inGroup.filter(function(e){ return e.variant==="a"||e.variant==="ab"; });
-    var listB = inGroup.filter(function(e){ return e.variant==="b"||e.variant==="ab"; });
-    var listNone = inGroup.filter(function(e){ return !e.variant; });
-    if(listA.length){ html += '<div class="train-tag">Liste A</div>'; html += listHtml(listA, grp); }
-    if(listB.length){ html += '<div class="train-tag">Liste B</div>'; html += listHtml(listB, grp); }
-    if(listNone.length){
-      if(listA.length||listB.length) html += '<div class="train-tag" style="background:var(--bg-elevated);color:var(--text-dim);">Uden liste</div>';
-      html += listHtml(listNone, grp);
-    }
-  });
-
-  var rest = ex.filter(function(e){ return !usedIds[e.id]; });
-  if(rest.length){
-    html += '<h2 class="section">Uden muskelgruppe</h2>';
-    html += '<div class="card" style="padding:0;margin-bottom:16px;">';
-    rest.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(e){
-      html += '<div class="list-row" data-exid="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">'+(e.bodyweight?'Kropsvægt':'')+'</div></div><div class="chev">›</div></div>';
+  /* Nye/ukategoriserede øvelser øverst */
+  var uncategorized = ex.filter(function(e){ return !e.muscle; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+  if(uncategorized.length){
+    html += '<div class="train-tag" style="background:var(--red);color:#fff;">Ikke kategoriseret</div>';
+    html += '<div class="muted" style="margin-bottom:8px;">Tryk på en øvelse for at vælge muskelgruppe og liste.</div>';
+    html += '<div class="card" style="padding:0;margin-top:0;margin-bottom:16px;">';
+    uncategorized.forEach(function(e){
+      html += '<div class="list-row" data-catid="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">'+(e.bodyweight?'Kropsvægt · ':'')+'Mangler kategori</div></div><div class="pill-btn" style="pointer-events:none;">Kategorisér</div></div>';
     });
     html += '</div>';
   }
+
+  MUSCLE_GROUPS_BY_DAY.forEach(function(grp, grpIdx){
+    var inGroup = ex.filter(function(e){ return e.muscle && grp.muscles.indexOf(e.muscle)!==-1; });
+    if(inGroup.length===0) return;
+    html += '<h2 class="section">'+escapeHtml(grp.title)+'</h2>';
+    var listA = inGroup.filter(function(e){ return variantHas(e,"a"); });
+    var listB = inGroup.filter(function(e){ return variantHas(e,"b"); });
+    var listC = inGroup.filter(function(e){ return !variantHas(e,"a") && !variantHas(e,"b"); });
+    html += listHeader("Liste A", grpIdx, "a");
+    html += listHtml(listA, grp);
+    html += listHeader("Liste B", grpIdx, "b");
+    html += listHtml(listB, grp);
+    if(listC.length){
+      html += '<div class="train-tag" style="background:var(--bg-elevated);color:var(--text-dim);">Liste C — øvrige</div>';
+      html += listHtml(listC, grp);
+    }
+  });
 
   if(ex.length===0){
     html += '<div class="card"><div class="empty-state">Ingen øvelser endnu — tilføj din første! 💪</div></div>';
@@ -1615,6 +1635,141 @@ function renderExercisesPage(){
       goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-exid"), viewUser:null, histBack:"exercises"});
     });
   });
+  main.querySelectorAll("[data-catid]").forEach(function(row){
+    row.addEventListener("click", function(){
+      openEditExerciseModal(row.getAttribute("data-catid"), function(){ renderExercisesPage(); });
+    });
+  });
+  main.querySelectorAll("[data-editlist]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      openEditListModal(parseInt(btn.getAttribute("data-group"),10), btn.getAttribute("data-editlist"));
+    });
+  });
+}
+
+/* Redigér hvilke øvelser der er med i Liste A eller B for en muskelgruppe */
+function openEditListModal(grpIdx, letter){
+  var grp = MUSCLE_GROUPS_BY_DAY[grpIdx];
+  if(!grp) return;
+  var inGroup = loadEx().filter(function(e){ return e.muscle && grp.muscles.indexOf(e.muscle)!==-1; })
+    .sort(function(a,b){
+      var ma = grp.muscles.indexOf(a.muscle), mb = grp.muscles.indexOf(b.muscle);
+      if(ma!==mb) return ma-mb;
+      return a.name.localeCompare(b.name);
+    });
+  var checked = {};
+  inGroup.forEach(function(e){ checked[e.id] = variantHas(e, letter); });
+
+  var html = '<h3>Liste '+letter.toUpperCase()+' — '+escapeHtml(grp.title)+'</h3>';
+  html += '<div class="muted" style="margin-bottom:12px;">Vælg hvilke øvelser der skal være på listen. Øvelser uden liste ligger i Liste C.</div>';
+  html += '<div class="search-results" style="margin-bottom:14px;">';
+  inGroup.forEach(function(e){
+    html += '<div class="search-result-item" data-chk="'+e.id+'"><span>'+escapeHtml(e.name)+' <span class="muted">('+(MUSCLE_LABELS[e.muscle]||"")+')</span></span><span style="font-size:18px;font-weight:800;color:var(--yellow);" id="chk_'+e.id+'">'+(checked[e.id]?"☑":"☐")+'</span></div>';
+  });
+  html += '</div>';
+  html += '<button class="btn primary" id="saveListBtn">Gem liste</button>';
+  openModal(html);
+
+  modalSheet.querySelectorAll("[data-chk]").forEach(function(row){
+    row.addEventListener("click", function(){
+      var id = row.getAttribute("data-chk");
+      checked[id] = !checked[id];
+      document.getElementById("chk_"+id).textContent = checked[id] ? "☑" : "☐";
+    });
+  });
+  document.getElementById("saveListBtn").addEventListener("click", function(){
+    var list = loadEx().map(function(e){
+      if(!e.muscle || grp.muscles.indexOf(e.muscle)===-1) return e;
+      var letters = String(e.variant||"").replace(letter, "");
+      if(checked[e.id]) letters += letter;
+      /* normalisér rækkefølgen a før b */
+      var norm = (letters.indexOf("a")!==-1?"a":"") + (letters.indexOf("b")!==-1?"b":"");
+      var newVariant = norm || null;
+      if(newVariant===(e.variant||null)) return e;
+      return Object.assign({}, e, {variant: newVariant});
+    });
+    saveEx(list);
+    closeModal();
+    showToast("Liste "+letter.toUpperCase()+" opdateret ✓");
+    renderExercisesPage();
+  });
+}
+
+/* Start-katalog: nye konti får hele øvelseslisten (med muskelgruppe og Liste A/B),
+   men selvfølgelig INGEN loggede sæt — de starter som om de aldrig har trænet. */
+var STARTER_CATALOG = [
+  {id:"weighted-pull-ups", name:"Weighted pull-ups", bodyweight:true, muscle:"ryg", variant:"a"},
+  {id:"chest-supported-row-neutral", name:"Chest-supported row (neutral grip)", bodyweight:false, muscle:"ryg", variant:"a"},
+  {id:"chest-supported-row-wide", name:"Chest-supported row (wide grip)", bodyweight:false, muscle:"ryg", variant:"a"},
+  {id:"rear-delt-flyes-cable", name:"Rear delt flyes (cable)", bodyweight:false, muscle:"bagskulder", variant:"a"},
+  {id:"pec-deck-rear-delt", name:"Pec deck rear delt", bodyweight:false, muscle:"bagskulder", variant:"a"},
+  {id:"one-arm-cable-pushdown", name:"One-arm cable pushdown", bodyweight:false, muscle:"tricep", variant:"a"},
+  {id:"dumbbell-skullcrushers", name:"Dumbbell skullcrushers", bodyweight:false, muscle:"tricep", variant:"a"},
+  {id:"chin-ups", name:"Chin-ups", bodyweight:true, muscle:"ryg", variant:"b"},
+  {id:"bent-over-rows", name:"Bent-over rows", bodyweight:false, muscle:"ryg", variant:"b"},
+  {id:"close-grip-lat-pulldown", name:"Close-grip lat pulldown", bodyweight:false, muscle:"ryg", variant:"b"},
+  {id:"wide-grip-lat-pulldown", name:"Wide-grip lat pulldown", bodyweight:false, muscle:"ryg", variant:"b"},
+  {id:"rear-delt-flyes-single", name:"Rear delt flyes (single arm)", bodyweight:false, muscle:"bagskulder", variant:"b"},
+  {id:"barbell-skullcrushers", name:"Barbell skullcrushers", bodyweight:false, muscle:"tricep", variant:"b"},
+  {id:"rope-pushdown-cable", name:"Rope pushdown (cable)", bodyweight:false, muscle:"tricep", variant:"b"},
+  {id:"single-arm-tricep-pushdown", name:"Single-arm tricep pushdown", bodyweight:false, muscle:"tricep", variant:"b"},
+  {id:"leg-extension", name:"Leg extension", bodyweight:false, muscle:"ben", variant:"ab"},
+  {id:"squat", name:"Squat", bodyweight:false, muscle:"ben", variant:"a"},
+  {id:"hamstring-curl", name:"Hamstring curl", bodyweight:false, muscle:"ben", variant:"ab"},
+  {id:"barbell-rdl", name:"Barbell RDL", bodyweight:false, muscle:"ben", variant:"ab"},
+  {id:"hip-abduction-adduction", name:"Hip abduction/adduction machine", bodyweight:false, muscle:"ben", variant:"a"},
+  {id:"calf-raise", name:"Calf raise", bodyweight:false, muscle:"ben", variant:"a"},
+  {id:"leg-raises", name:"Leg raises", bodyweight:true, muscle:"mave", variant:"ab"},
+  {id:"cable-crunches", name:"Cable crunches", bodyweight:false, muscle:"mave", variant:"a"},
+  {id:"bulgarian-split-squat", name:"Bulgarian split squat", bodyweight:false, muscle:"ben", variant:"b"},
+  {id:"pendulum-squat", name:"Pendulum squat", bodyweight:false, muscle:"ben", variant:"b"},
+  {id:"calf-raise-seated", name:"Calf raise (seated)", bodyweight:false, muscle:"ben", variant:"b"},
+  {id:"machine-crunches", name:"Machine crunches", bodyweight:false, muscle:"mave", variant:"b"},
+  {id:"bench-press", name:"Bench press", bodyweight:false, muscle:"bryst", variant:"a"},
+  {id:"incline-smith-press", name:"Incline smith machine press", bodyweight:false, muscle:"bryst", variant:"a"},
+  {id:"pec-deck", name:"Pec deck", bodyweight:false, muscle:"bryst", variant:"a"},
+  {id:"lateral-raise-cable-single", name:"Lateral raise (cable, single arm)", bodyweight:false, muscle:"sideskulder", variant:"a"},
+  {id:"shoulder-press-barbell", name:"Shoulder press (barbell)", bodyweight:false, muscle:"forskulder", variant:"a"},
+  {id:"incline-dumbbell-curl", name:"Incline dumbbell curl", bodyweight:false, muscle:"biceps", variant:"a"},
+  {id:"dumbbell-preacher-machine", name:"Dumbbell preacher curl (machine)", bodyweight:false, muscle:"biceps", variant:"a"},
+  {id:"ez-bar-curl", name:"EZ-bar curl (overhand)", bodyweight:false, muscle:"biceps", variant:"ab"},
+  {id:"incline-dumbbell-press", name:"Incline dumbbell press", bodyweight:false, muscle:"bryst", variant:"b"},
+  {id:"dips", name:"Dips", bodyweight:true, muscle:"bryst", variant:"b"},
+  {id:"cable-fly-upper", name:"Cable fly (upper)", bodyweight:false, muscle:"bryst", variant:"b"},
+  {id:"cable-fly-mid", name:"Cable fly (mid)", bodyweight:false, muscle:"bryst", variant:"b"},
+  {id:"military-press-dumbbell", name:"Military press (dumbbell)", bodyweight:false, muscle:"forskulder", variant:"b"},
+  {id:"lateral-raise-lying", name:"Lateral raise (lying)", bodyweight:false, muscle:"sideskulder", variant:"b"},
+  {id:"bayesian-cable-curl", name:"Bayesian cable curl", bodyweight:false, muscle:"biceps", variant:"b"},
+  {id:"hammer-curl-preacher", name:"Hammer curl (preacher/iso)", bodyweight:false, muscle:"biceps", variant:"b"},
+  {id:"ez-bar-curls", name:"EZ-bar curls", bodyweight:false, muscle:"biceps", variant:null}
+];
+function maybeSeedCatalog(){
+  if(memEx.length>0) return Promise.resolve();
+  var catalog = STARTER_CATALOG.map(function(e){ return Object.assign({}, e); });
+  return upsertChunks("exercises", catalog.map(function(e){ return exToRow(e); })).then(function(){
+    memEx = catalog;
+  }).catch(function(){ /* net-fejl: brugeren kan stadig tilføje øvelser manuelt */ });
+}
+
+/* Engangs-oprydning: EZ-bar sæt samles i startdataen 15/6 (kun Matteos konto).
+   20/6-sættene (normale EZ-bar curls, 30 kg) flyttes til 15/6, og 18/6-sættene
+   (overhand 30 kg) fjernes som dublet. Kører kun hvis de gamle datoer findes. */
+function maybeFixEzbarStartdata(){
+  if(!session.user.email || session.user.email.toLowerCase()!==MIGRATION_OWNER_EMAIL) return;
+  var needsFix = memLogs.some(function(l){
+    return (l.exerciseId==="ez-bar-curls" && l.date==="2026-06-20") || (l.exerciseId==="ez-bar-curl" && l.date==="2026-06-18");
+  });
+  if(!needsFix) return;
+  var list = [];
+  memLogs.forEach(function(l){
+    if(l.exerciseId==="ez-bar-curl" && l.date==="2026-06-18") return; /* dublet — fjernes */
+    if(l.exerciseId==="ez-bar-curls" && l.date==="2026-06-20"){
+      list.push(Object.assign({}, l, { date:"2026-06-15", loggedAt:null }));
+    } else {
+      list.push(l);
+    }
+  });
+  saveLogs(list);
 }
 
 /* Engangs-fordeling af Liste A/B ud fra det gamle Programmer-data (kun på telefoner der har det) */
@@ -1954,8 +2109,8 @@ function buildUserWorkouts(userId, userLogs, exById){
       var prevBest = bestSoFar[exId];
       var isPR = topScore!==null && prevBest!==undefined && topScore > prevBest;
       if(topScore!==null && (prevBest===undefined || topScore > prevBest)) bestSoFar[exId] = topScore;
-      var exObj = exById[exId] || { id:exId, name:"(slettet øvelse)", bodyweight:false };
-      return { exId:exId, name:exObj.name, bodyweight:!!exObj.bodyweight, sets:sets, tracked:tracked, isPR:isPR };
+      var exObj = exById[exId] || { id:exId, name:"(slettet øvelse)", bodyweight:false, muscle:null };
+      return { exId:exId, name:exObj.name, bodyweight:!!exObj.bodyweight, muscle:exObj.muscle||null, sets:sets, tracked:tracked, isPR:isPR };
     });
     out.push({ userId:userId, start:w.start, end:w.end, exercises:exSummaries, setCount:w.logs.length });
   });
@@ -2048,8 +2203,19 @@ function renderFeed(){
         whenTxt = fmtDateDisplay(dateIso) + " · " + fmtClock(w.start) + (durMin>0 ? ("–"+fmtClock(w.end)+" · "+durMin+" min") : "") + " · " + w.exercises.length + " øvelse" + (w.exercises.length===1?"":"r");
       }
       var anyPR = w.exercises.some(function(x){ return x.isPR; });
+      var key = w.userId + "|" + w.start;
+      var comments = commentsByKey[key] || [];
+      var expanded = !!state.feedExpanded[key];
 
-      html += '<div class="feed-card"'+(isLive?' style="border-color:var(--green);"':'')+'>';
+      /* kompakt resumé: muskelgrupper + PR-øvelser */
+      var muscles = [];
+      w.exercises.forEach(function(x){
+        var lbl = MUSCLE_LABELS[x.muscle];
+        if(lbl && muscles.indexOf(lbl)===-1) muscles.push(lbl);
+      });
+      var prNames = w.exercises.filter(function(x){ return x.isPR; }).map(function(x){ return x.name; });
+
+      html += '<div class="feed-card" data-wkey="'+wi+'" style="cursor:pointer;'+(isLive?'border-color:var(--green);':'')+'">';
       html += '<div class="feed-head">';
       html += '<div class="avatar">'+escapeHtml(uname.slice(0,1).toUpperCase())+'</div>';
       html += '<div style="min-width:0;flex:1;">';
@@ -2060,6 +2226,12 @@ function renderFeed(){
       else if(anyPR) html += '<span class="pr-badge">🏆 PR</span>';
       html += '</div>';
 
+      if(muscles.length) html += '<div class="muted" style="margin-top:8px;">💪 '+escapeHtml(muscles.join(" · "))+'</div>';
+      if(prNames.length) html += '<div style="margin-top:6px;font-size:13px;font-weight:700;color:var(--yellow);">🏆 PR i '+escapeHtml(prNames.join(", "))+'</div>';
+      html += '<div class="muted" style="margin-top:6px;">'+(comments.length ? '💬 '+comments.length+' kommentar'+(comments.length===1?'':'er')+' · ' : '')+'<span style="color:var(--yellow);font-weight:700;" id="fdl_'+wi+'">'+(expanded?'Skjul detaljer ▲':'Se detaljer ▼')+'</span></div>';
+
+      /* detaljer (foldet sammen som standard) */
+      html += '<div class="feed-details" id="fd_'+wi+'" style="display:'+(expanded?'block':'none')+';margin-top:10px;border-top:1px solid var(--border);">';
       w.exercises.forEach(function(x){
         var setsTxt;
         if(x.tracked.length===0){
@@ -2072,9 +2244,6 @@ function renderFeed(){
         html += '<div class="feed-ex-sets">'+escapeHtml(setsTxt)+'</div>';
         html += '</div>';
       });
-
-      var key = w.userId + "|" + w.start;
-      var comments = commentsByKey[key] || [];
       if(comments.length){
         html += '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:4px;">';
         comments.forEach(function(c){
@@ -2083,10 +2252,46 @@ function renderFeed(){
         html += '</div>';
       }
       html += '<div class="comment-input-row"><input type="text" id="cin_'+wi+'" placeholder="Skriv en kommentar…" maxlength="500"><button class="comment-send" data-wi="'+wi+'">Send</button></div>';
-      html += '</div>';
+      html += '</div>'; /* /detaljer */
+      html += '</div>'; /* /kort */
     });
 
     main.innerHTML = html;
+
+    /* fold ud/ind ved tryk på kortet (men ikke på input, knapper og links) */
+    main.querySelectorAll(".feed-card[data-wkey]").forEach(function(card){
+      card.addEventListener("click", function(e){
+        if(e.target && e.target.closest && e.target.closest("input, button, a, [data-gotouser]")) return;
+        var wi2 = parseInt(card.getAttribute("data-wkey"),10);
+        var w2 = allWorkouts[wi2];
+        var key2 = w2.userId + "|" + w2.start;
+        var det = document.getElementById("fd_"+wi2);
+        var lbl = document.getElementById("fdl_"+wi2);
+        var isOpen = det.style.display !== "none";
+        det.style.display = isOpen ? "none" : "block";
+        if(lbl) lbl.textContent = isOpen ? "Se detaljer ▼" : "Skjul detaljer ▲";
+        state.feedExpanded[key2] = !isOpen;
+      });
+    });
+
+    /* deep-link fra Kommentarer: fold den rigtige træning ud og scroll derhen */
+    if(state.feedFocus){
+      var focusIdx = -1;
+      allWorkouts.forEach(function(w3, i3){ if((w3.userId+"|"+w3.start)===state.feedFocus) focusIdx = i3; });
+      if(focusIdx>=0){
+        state.feedExpanded[state.feedFocus] = true;
+        var fdet = document.getElementById("fd_"+focusIdx);
+        var flbl = document.getElementById("fdl_"+focusIdx);
+        if(fdet) fdet.style.display = "block";
+        if(flbl) flbl.textContent = "Skjul detaljer ▲";
+        var fcard = main.querySelector('.feed-card[data-wkey="'+focusIdx+'"]');
+        if(fcard){
+          fcard.style.borderColor = "var(--yellow)";
+          if(fcard.scrollIntoView) fcard.scrollIntoView({behavior:"smooth", block:"start"});
+        }
+      }
+      state.feedFocus = null;
+    }
 
     main.querySelectorAll("[data-gotouser]").forEach(function(el){
       el.addEventListener("click", function(){
@@ -2148,8 +2353,8 @@ function renderFriends(){
 
     /* Søg og tilføj */
     html += '<div class="card">';
-    html += '<label class="field-label">Tilføj en ven (søg på brugernavn)</label>';
-    html += '<div class="row"><input type="text" id="friendSearch" autocomplete="off" autocapitalize="off" placeholder="fx anders"><button class="btn small primary" id="friendSearchBtn" style="flex:0 0 auto;">Søg</button></div>';
+    html += '<label class="field-label">Tilføj en ven (søg på brugernavn eller email)</label>';
+    html += '<div class="row"><input type="text" id="friendSearch" autocomplete="off" autocapitalize="off" placeholder="fx anders eller anders@mail.dk"><button class="btn small primary" id="friendSearchBtn" style="flex:0 0 auto;">Søg</button></div>';
     html += '<div id="friendSearchResults"></div>';
     html += '</div>';
 
@@ -2194,9 +2399,20 @@ function renderFriends(){
       var box = document.getElementById("friendSearchResults");
       if(q.length<2){ box.innerHTML = '<div class="muted" style="margin-top:8px;">Skriv mindst 2 tegn.</div>'; return; }
       box.innerHTML = '<div class="muted" style="margin-top:8px;">Søger…</div>';
-      sb.from("profiles").select("*").ilike("username", "%"+q+"%").limit(10).then(function(res){
-        if(res.error){ box.innerHTML = '<div class="muted" style="margin-top:8px;">Søgning fejlede.</div>'; return; }
-        var hits = (res.data||[]).filter(function(p){ return p.id!==me; });
+      Promise.all([
+        sb.from("profiles").select("*").ilike("username", "%"+q+"%").limit(10),
+        sb.from("profiles").select("*").ilike("email", "%"+q+"%").limit(10)
+      ]).then(function(results){
+        if(results[0].error && results[1].error){ box.innerHTML = '<div class="muted" style="margin-top:8px;">Søgning fejlede.</div>'; return; }
+        var seenIds = {};
+        var hits = [];
+        results.forEach(function(res){
+          (res.data||[]).forEach(function(p){
+            if(p.id===me || seenIds[p.id]) return;
+            seenIds[p.id] = true;
+            hits.push(p);
+          });
+        });
         if(hits.length===0){ box.innerHTML = '<div class="muted" style="margin-top:8px;">Ingen brugere fundet med "'+escapeHtml(q)+'".</div>'; return; }
         var out = '<div class="search-results">';
         hits.forEach(function(p){
@@ -2387,37 +2603,34 @@ function renderCommentsPage(){
     var all = res[0].data||[];
     var nameById = {};
     ((res[1] && res[1].data)||[]).forEach(function(p){ nameById[p.id] = p.username; });
-    var mine = myConversationComments(all);
+    /* Notifikationsliste: andres kommentarer i mine samtaler, nyeste først */
+    var notis = myConversationComments(all).filter(function(c){ return c.author!==me; });
+    notis.sort(function(a,b){ return Date.parse(b.created_at) - Date.parse(a.created_at); });
     var seen = getCommentsSeen();
 
-    var groups = {};
-    mine.forEach(function(c){
-      var k = c.target_user + "|" + c.workout_start;
-      if(!groups[k]) groups[k] = [];
-      groups[k].push(c);
-    });
-    var keys = Object.keys(groups).sort(function(a,b){
-      var la = groups[a][groups[a].length-1], lb = groups[b][groups[b].length-1];
-      return Date.parse(lb.created_at) - Date.parse(la.created_at);
-    });
-
     var html = '<h2 class="section">Kommentarer</h2>';
-    if(keys.length===0){
-      html += '<div class="card"><div class="empty-state">Ingen kommentarer endnu.<br>Kommentér en træning i feedet! 💬</div></div>';
+    if(notis.length===0){
+      html += '<div class="card"><div class="empty-state">Ingen notifikationer endnu.<br>Når nogen kommenterer dine træninger, dukker det op her. 💬</div></div>';
+    } else {
+      html += '<div class="muted" style="margin-bottom:12px;">Tryk på en notifikation for at åbne træningen i feedet.</div>';
     }
-    keys.forEach(function(k, ki){
-      var cs = groups[k];
-      var target = cs[0].target_user;
-      var ws = Date.parse(cs[0].workout_start);
-      var who = target===me ? "Din træning" : escapeHtml((nameById[target]||"ukendt"))+"s træning";
-      html += '<div class="feed-card">';
-      html += '<div class="conv-title">'+who+'</div>';
-      html += '<div class="conv-when">'+fmtDateDisplay(new Date(ws).toISOString().slice(0,10))+' · kl. '+fmtClock(ws)+'</div>';
-      cs.forEach(function(c){
-        var isNew = c.author!==me && Date.parse(c.created_at) > seen;
-        html += '<div class="comment-line"><span class="comment-author">'+escapeHtml(nameById[c.author]||"ukendt")+'</span><span class="comment-body">'+escapeHtml(c.body)+(isNew?'<span class="new-dot"></span>':'')+'</span></div>';
-      });
-      html += '<div class="comment-input-row"><input type="text" id="rin_'+ki+'" placeholder="Svar…" maxlength="500"><button class="comment-send" data-k="'+ki+'">Send</button></div>';
+    notis.forEach(function(c, i){
+      var isNew = Date.parse(c.created_at) > seen;
+      var author = nameById[c.author] || "ukendt";
+      var whoTxt;
+      if(c.target_user===me) whoTxt = "din træning";
+      else if(c.target_user===c.author) whoTxt = "sin egen træning";
+      else whoTxt = escapeHtml(nameById[c.target_user]||"ukendt")+"s træning";
+      var cMs = Date.parse(c.created_at);
+      var when = fmtDateDisplay(new Date(cMs).toISOString().slice(0,10)) + " kl. " + fmtClock(cMs);
+      html += '<div class="feed-card" data-noti="'+i+'" style="cursor:pointer;'+(isNew?'border-color:var(--yellow);':'')+'">';
+      html += '<div class="feed-head" style="margin-bottom:4px;">';
+      html += '<div class="avatar">'+escapeHtml(author.slice(0,1).toUpperCase())+'</div>';
+      html += '<div style="flex:1;min-width:0;">';
+      html += '<div style="font-size:14px;"><b>'+escapeHtml(author)+'</b> kommenterede '+whoTxt+(isNew?'<span class="new-dot"></span>':'')+'</div>';
+      html += '<div class="muted" style="margin-top:2px;">'+when+'</div>';
+      html += '</div><span class="chev">›</span></div>';
+      html += '<div style="font-size:14px;color:var(--text-dim);word-break:break-word;">"'+escapeHtml(c.body)+'"</div>';
       html += '</div>';
     });
     main.innerHTML = html;
@@ -2426,23 +2639,13 @@ function renderCommentsPage(){
     setCommentsSeenNow();
     refreshMenuBadges();
 
-    main.querySelectorAll(".comment-send").forEach(function(btn){
-      btn.addEventListener("click", function(){
-        var ki = parseInt(btn.getAttribute("data-k"),10);
-        var cs = groups[keys[ki]];
-        var input = document.getElementById("rin_"+ki);
-        var body = (input.value||"").trim();
-        if(!body) return;
-        btn.disabled = true;
-        sb.from("comments").insert({
-          target_user: cs[0].target_user,
-          workout_start: cs[0].workout_start,
-          author: me,
-          body: body
-        }).then(function(res2){
-          if(res2.error){ showToast("Kunne ikke sende svar"); btn.disabled = false; return; }
-          renderCommentsPage();
-        });
+    main.querySelectorAll("[data-noti]").forEach(function(card){
+      card.addEventListener("click", function(){
+        var c = notis[parseInt(card.getAttribute("data-noti"),10)];
+        var key = c.target_user + "|" + Date.parse(c.workout_start);
+        state.feedFocus = key;
+        state.feedExpanded[key] = true;
+        goto("feed");
       });
     });
   }).catch(function(){
