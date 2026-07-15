@@ -7,6 +7,11 @@ Matteo har nu uploadet koden til GitHub og testet på sin iPhone (som PWA/hjemme
 
 **"Godkend brugere"-siden er udvidet:** viser nu også en "Alle oprettede brugere"-liste (ikke kun ventende), med status (Godkendt/Afventer) pr. bruger. Godkendte brugere (undtagen Matteo selv) har en "Fjern adgang"-knap til at tilbagekalde godkendelse igen. Testet med jsdom-simulering, ingen fejl.
 
+**Ny fil: `sw.js` (service worker) — løser "alle skal slette+geninstallere appen for at få opdateringer".** Uden en service worker cacher iPhones en hjemmeskærm-app ret aggressivt, så nye kodeændringer ikke altid når frem uden manuel geninstallation. `sw.js` tvinger appen til altid at hente den nyeste version fra serveren (netværk først, kun cache som nødløsning hvis reelt offline — appen kræver alligevel internet pga. Supabase). Registreres automatisk fra `index.html` ved opstart.
+
+⚠️ **Vigtigt at forstå:** dette er en "hønen og ægget"-fix. Telefoner der allerede kører den GAMLE kode (uden service worker-registrering) kan ikke opdage den nye `sw.js` af sig selv — de skal have ÉN sidste manuel opdatering (slet+geninstallér genvejen, som i denne runde) for at hente koden der faktisk registrerer service workeren. Men fra og med DEN opdatering, bør alle fremtidige ændringer hentes automatisk, uden at nogen skal slette og geninstallere igen. Så: upload denne omgang som normalt, bed alle 3 brugere geninstallere én sidste gang — herefter bør det være løst for godt.
+**Ikke testet i en rigtig browser/telefon endnu.**
+
 ## ⚠️ Vigtig ændring siden start — læs dette
 Appen startede som et rent lokalt/offline-projekt (data kun på telefonen, ingen server). Undervejs er arkitekturen ændret fundamentalt til en **cloud-løsning med Supabase**, fordi appen deles med venner (feed, kommentarer, venneanmodninger — det kræver en central database). Det oprindelige "kun lokalt, ingen server"-krav gælder altså ikke længere.
 

@@ -3070,6 +3070,12 @@ function init(){
 }
 init();
 
+/* Sørger for at telefonen altid henter nyeste version fremover (se sw.js) —
+   uden denne registrering kan telefonen blive ved med at vise gammel, cachet kode. */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(function(){});
+}
+
 })();
 </script>
 </body>
