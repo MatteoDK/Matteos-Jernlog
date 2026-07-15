@@ -623,19 +623,35 @@ function showToast(msg, ms, type){
 
 /* ---------------- Tastatur + knap-tryk samtidig (iOS-fix) ----------------
    På iPhone kræver det normalt to separate tryk at (1) lukke tastaturet og
-   (2) trykke på en knap bagved: første tryk bruges kun til at lukke
-   tastaturet, og selve knappens "click" udløses ikke. Fix: så snart en
-   berøring starter (touchstart, som sker FØR click) uden for det aktive
-   inputfelt, fjernes fokus (blur) med det samme — så tastaturet allerede er
-   ved at lukke når selve tryk-gestussen afsluttes, og knappens click-handler
-   når at blive udløst normalt i samme tryk. */
-document.addEventListener("touchstart", function(e){
-  var ae = document.activeElement;
-  if(!ae || (ae.tagName!=="INPUT" && ae.tagName!=="TEXTAREA")) return;
-  if(e.target === ae) return;
-  if(e.target && e.target.closest && e.target.closest("input, textarea")) return;
-  ae.blur();
-}, {passive:true});
+   (2) trykke på en knap bagved — første tryk bruges kun til at lukke
+   tastaturet, og knappens "click" udløses aldrig.
+   Tidligere forsøg: fjerne fokus globalt på "touchstart" for hele siden.
+   Det viste sig at give en NY fejl (fx på login-siden): fordi det globale
+   touchstart-tryk starter tastaturets luk-animation FØR selve trykket er
+   færdigt, når layoutet nogle gange at flytte sig (feltet under fingeren
+   ændrer position), så browseren tror man trykkede på et helt andet element
+   (fx hoppede op i mail-feltet i stedet for at trykke "Log ind").
+   Rigtig fix: brug "touchend" (ikke touchstart) PÅ SELVE KNAPPEN i stedet for
+   et globalt lag. Touch-events er "låst" til det element man startede trykket
+   på, uanset om layoutet flytter sig undervejs — så den rammer altid den
+   rigtige knap. bindTapAction() bruges på knapper der sidder lige efter et
+   tekstfelt (login, kommentar-send), og gør både luk-tastatur og selve
+   knappens handling i ét og samme tryk. */
+function bindTapAction(el, handler){
+  var handledByTouch = false;
+  el.addEventListener("touchend", function(e){
+    handledByTouch = true;
+    e.preventDefault();
+    var ae = document.activeElement;
+    if(ae && (ae.tagName==="INPUT"||ae.tagName==="TEXTAREA") && ae!==el) ae.blur();
+    handler(e);
+    setTimeout(function(){ handledByTouch = false; }, 500);
+  }, {passive:false});
+  el.addEventListener("click", function(e){
+    if(handledByTouch) return; /* undgå at "click" (som følger efter touchend) udløser handleren igen */
+    handler(e);
+  });
+}
 
 /* ---------------- App-titel = genvej til hovedskærmen ---------------- */
 var appTitleBtn = document.getElementById("appTitleBtn");
@@ -794,7 +810,7 @@ function renderLogin(mode, prefillEmail){
   });
 
   var submitBtn = document.getElementById("authSubmit");
-  submitBtn.addEventListener("click", function(){
+  bindTapAction(submitBtn, function(){
     var email = document.getElementById("authEmail").value.trim();
     var password = document.getElementById("authPassword").value;
     if(!email || email.indexOf("@")===-1){ showToast("Skriv en gyldig email"); return; }
@@ -910,7 +926,7 @@ function promptUsername(prev){
         '<div class="field"><input type="text" id="unameInput" autocomplete="off" autocapitalize="off" placeholder="fx matteo"></div>'+
         '<button class="btn primary" id="unameSave">Gem</button>';
       openModal(html);
-      document.getElementById("unameSave").addEventListener("click", function(){
+      bindTapAction(document.getElementById("unameSave"), function(){
         var u = document.getElementById("unameInput").value.trim().toLowerCase();
         if(!/^[a-z0-9æøå_.-]{2,20}$/.test(u)){ showToast("2-20 tegn, kun bogstaver/tal/._-"); return; }
         closeModal();
@@ -1156,7 +1172,7 @@ function openAddExerciseModal(prefillName){
     });
   });
   attachVariantToggle("newExVariantToggle", null, function(v){ variantVal = v; });
-  document.getElementById("saveNewEx").addEventListener("click", function(){
+  bindTapAction(document.getElementById("saveNewEx"), function(){
     var name = document.getElementById("newExName").value.trim();
     if(!name){ showToast("Skriv et navn"); return; }
     var muscle = document.getElementById("newExMuscle").value || null;
@@ -1293,7 +1309,7 @@ function openEditExerciseModal(exId, onSaved){
     });
   });
   attachVariantToggle("editExVariantToggle", variantVal, function(v){ variantVal = v; });
-  document.getElementById("saveRenameEx").addEventListener("click", function(){
+  bindTapAction(document.getElementById("saveRenameEx"), function(){
     var newName = document.getElementById("editExName").value.trim();
     if(!newName){ showToast("Skriv et navn"); return; }
     var muscle = document.getElementById("editExMuscle").value || null;
@@ -1373,7 +1389,7 @@ function attachLogFormHandlers(){
 
   var saveBtn = document.getElementById("saveSetBtn");
   if(saveBtn){
-    saveBtn.addEventListener("click", function(){
+    bindTapAction(saveBtn, function(){
       var exObj = getExerciseById(logDraft.exerciseId);
       var weightRaw = document.getElementById("logWeight").value;
       var parsedReps;
@@ -1665,7 +1681,7 @@ function openEditSetModal(logId, exId){
     renderExerciseHistory(exId);
     showToast("Sæt markeret som sprunget over");
   });
-  document.getElementById("saveEditBtn").addEventListener("click", function(){
+  bindTapAction(document.getElementById("saveEditBtn"), function(){
     var w = parseWeight(document.getElementById("editWeight").value);
     var parsedReps = parseReps(document.getElementById("editReps").value);
     if(!parsedReps){ showToast("Udfyld reps (fx 8 eller 7-9)"); return; }
@@ -2421,7 +2437,7 @@ function loadDigComments(workouts, me){
         h += '<div class="comment-input-row"><input type="text" id="dcin_'+wi+'" placeholder="Skriv en kommentar…" maxlength="500"><button class="comment-send" data-dwi="'+wi+'">Send</button></div>';
         container.innerHTML = h;
         var btn = container.querySelector(".comment-send");
-        btn.addEventListener("click", function(){
+        bindTapAction(btn, function(){
           var input = document.getElementById("dcin_"+wi);
           var body = (input.value||"").trim();
           if(!body) return;
@@ -2691,7 +2707,7 @@ function renderFeed(){
       });
     });
     main.querySelectorAll(".comment-send").forEach(function(btn){
-      btn.addEventListener("click", function(){
+      bindTapAction(btn, function(){
         var wi = parseInt(btn.getAttribute("data-wi"),10);
         var w = allWorkouts[wi];
         var input = document.getElementById("cin_"+wi);
@@ -2913,7 +2929,7 @@ function renderFriends(){
         attachFriendActions(box);
       });
     }
-    document.getElementById("friendSearchBtn").addEventListener("click", doFriendSearch);
+    bindTapAction(document.getElementById("friendSearchBtn"), doFriendSearch);
     document.getElementById("friendSearch").addEventListener("keydown", function(e){ if(e.key==="Enter") doFriendSearch(); });
 
     attachFriendActions(main);

@@ -2,6 +2,26 @@
 
 Sidst opdateret: 2026-07-15
 
+## Opdatering 2026-07-15 (14. runde — "Fjern adgang" fejlede, database-rettelse kørt)
+Matteo kunne ikke fjerne Thors adgang — fik fejlen "permission denied for table users". Årsag: sikkerhedsreglerne (`profiles_admin_update`, `profiles_admin_delete`) og triggeren `prevent_self_approve()` fra den oprindelige migration tjekkede admin-status ved at slå direkte op i Supabases interne `auth.users`-tabel — men almindelige indloggede brugere (også Matteos egen konto, når den bruges via appen) har ikke lov til at læse den tabel direkte. Sandsynligvis har denne fejl ligget der siden starten; tidligere godkendelser blev kørt direkte i SQL Editor (som ikke har denne begrænsning), så det er først nu, med Thor, at "Godkend/Fjern adgang"-knapperne reelt er blevet testet i selve appen.
+
+**Rettelse:** Ny fil `supabase-fix-admin-permission.sql` — omskriver triggeren og de to admin-regler til at bruge `auth.jwt() ->> 'email'` (læser emailen direkte fra den indloggede brugers egen session) i stedet for at slå op i `auth.users`. Kørt direkte i Supabase SQL Editor via browser-styring — **"Success. No rows returned"**, altså udført korrekt.
+
+Dette er en ren database-rettelse — **ingen app-filer er ændret**, og der skal derfor ikke uploades noget til GitHub for denne runde. Matteo bør prøve "Fjern adgang" på Thor igen i appen for at bekræfte at fejlen er væk.
+
+## Opdatering 2026-07-15 (13. runde — login-knap hoppede til mail-felt, rigtig fix)
+Matteo fandt en ny fejl: på login-siden, hvis man stod i adgangskode-feltet og trykkede "Log ind", hoppede fokus bare op i mail-feltet i stedet for at logge ind — krævede at man først trykkede flueben på tastaturet, så "Log ind" separat.
+
+**Årsag:** Dette var højst sandsynligt en BIVIRKNING af forrige runde's globale touchstart-fix (runde 12, punkt 2). Den fjernede fokus fra inputfeltet med det samme et tryk startede ("touchstart") — men det satte tastaturets luk-animation i gang FØR selve trykket var færdigt, så layoutet nåede at flytte sig under fingeren, og telefonen troede man trykkede på et andet element (mail-feltet) end det man rent faktisk rørte ved (Log ind-knappen).
+
+**Rigtig fix:** Erstattet det globale touchstart-lag med en ny `bindTapAction()`-funktion der bruges direkte PÅ hver relevante knap i stedet. Den lytter på knappens eget `touchend` (som — modsat "click" — altid rammer det oprindelige element man trykkede på, uanset om layoutet flytter sig undervejs), fjerner fokus fra evt. aktivt tekstfelt, og udfører knappens handling i samme tryk. Har et "click"-fallback for ikke-touch-enheder, med en flag der forhindrer dobbelt-udførelse.
+
+Anvendt på alle knapper der sidder lige efter et tekstfelt: **Log ind/Opret konto, Log øvelse (gem sæt), Gem brugernavn, Opret ny øvelse, Omdøb øvelse, Gem redigeret sæt, Søg ven, Send kommentar (både feed og Dig).**
+
+Testet med jsdom (klik-fallback simuleret for login — ingen fejl, `signInWithPassword` kaldt korrekt; kommentar-afsendelse i feed/Dig fortsat OK). **Ikke testet på en rigtig telefon endnu — det er her den ægte test er, da jsdom ikke kan simulere ægte touch-timing/keyboard-animation.**
+
+**Skal uploades til GitHub:** kun `index.html`.
+
 ## Opdatering 2026-07-15 (12. runde — dato tydeligere, tastatur+knap-fix, kommentarer i Dig)
 Sort bjælke-fixet (version 15.7-C) er bekræftet virkende på telefonen. Tre nye ting lavet:
 
