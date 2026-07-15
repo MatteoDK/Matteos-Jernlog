@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Bundtest2">
+<title>Bundtest2</title>
+<style>
+  html,body{margin:0;padding:0;}
+  /* RØD dækker ALT — hvis der er sort under den røde, kan DOM'en ikke nå bunden */
+  #roed{position:fixed;inset:0;background:#cc0000;}
+  /* GRØN stribe = præcis safe-area-højden (skal være ca. 34px på nyere iPhones) */
+  #groen{position:fixed;left:0;right:0;bottom:0;height:env(safe-area-inset-bottom);background:#00e050;}
+  /* BLÅ boks = "falsk bundnav" placeret ovenover safe-area, som appens rigtige nav */
+  #blaa{position:fixed;left:0;right:0;bottom:env(safe-area-inset-bottom);height:60px;background:#0066ff;display:flex;align-items:center;justify-content:center;color:#fff;font-family:-apple-system,sans-serif;font-weight:700;font-size:15px;}
+  #info{position:fixed;top:calc(20px + env(safe-area-inset-top));left:0;right:0;color:#fff;font-family:Menlo,monospace;font-size:13px;line-height:1.6;padding:16px;white-space:pre-line;}
+</style>
+</head>
+<body>
+<div id="roed"></div>
+<div id="groen"></div>
+<div id="blaa">FALSK BUNDNAV</div>
+<div id="info"></div>
+<script>
+(function(){
+  /* måler hvad env(safe-area-inset-bottom) reelt giver i pixels */
+  var probe = document.createElement("div");
+  probe.style.cssText = "position:fixed;bottom:0;height:env(safe-area-inset-bottom);width:1px;visibility:hidden;";
+  document.body.appendChild(probe);
+  function fmt(){
+    var envBottom = probe.getBoundingClientRect().height;
+    return "INDLÆST KL: " + new Date().toLocaleTimeString("da-DK")
+      + "\nhjemmeskærm-app: " + (navigator.standalone === true ? "JA" : "NEJ (alm. Safari)")
+      + "\nenv(safe-area-inset-bottom): " + envBottom.toFixed(1) + " px"
+      + "\nwindow.innerHeight: " + window.innerHeight
+      + "\nscreen.height: " + screen.height
+      + "\nvisualViewport.height: " + (window.visualViewport ? window.visualViewport.height.toFixed(0) : "n/a")
+      + "\n\nFORVENTET: rød går HELT ned til skærmkanten,"
+      + "\ngrøn stribe (ca. 34px) allernederst, blå boks ovenpå."
+      + "\nSORT under blå/grøn = problemet er genskabt her.";
+  }
+  var el = document.getElementById("info");
+  el.textContent = fmt();
+  setInterval(function(){ el.textContent = fmt(); }, 1000);
+})();
+</script>
+</body>
+</html>
