@@ -2,6 +2,16 @@
 
 Sidst opdateret: 2026-07-15
 
+## Opdatering 2026-07-15 (7. runde — nyt ikon, bundnav-plads, kommentar-forbedringer)
+1. **Nyt app-ikon** — lavet fra Matteos nyeste ChatGPT-genererede billede (samme figur/stil, men tekst der fylder bredden bedre og næsten intet tomrum i bunden). Beskåret tæt og kvadratisk, gemt som `icon-180-v1.png` (overskriver den forrige — filnavnet er uændret, så `index.html` skal IKKE opdateres for dette).
+2. **Bundnav-plads** — iOS reserverer en lille strimmel nederst til "swipe hjem"-bevægelsen, hvor der ikke kan sidde trykbare knapper (kan ikke fjernes helt). I stedet er selve knap-rækken gjort højere (mere padding, større ikon/tekst), så knapperne fylder mere af området og den reserverede strimmel virker mindre/mere ubetydelig.
+3. **"Kommentarer"-label i feed** — tilføjet en lille label ("💬 Kommentarer") over kommentarsektionen i hvert opslag, så det er tydeligt hvor kommentarerne starter.
+4. **Dato på kommentarer** — hver kommentar viser nu dato (I dag/I går/dd. mmm) til højre.
+
+Alt testet med jsdom-simulering (ingen JS-fejl, label og dato bekræftet i output). **Ikke testet på en rigtig telefon endnu.**
+
+**Skal uploades til GitHub:** `index.html`, `icon-180-v1.png`, `PROGRESS.md`. `sw.js` skal IKKE med (uændret).
+
 ## Opdatering 2026-07-15 (6. runde — sort bjælke under bundnav, forsøg 2)
 Matteo bekræftede via skærmbillede at der stadig var en tydelig sort stribe under bundnavigationen på hjemmeskærm-appen (efter forrige `position:fixed;inset:0`-rettelse var uploadet og appen geninstalleret). Årsag (mest sandsynlig): `env(safe-area-inset-bottom)` giver i nogle tilfælde ikke ekstra plads korrekt til et element der ligger inde i et `position:fixed;inset:0`-element på iOS hjemmeskærm-apps — så bundnav'ens baggrund nåede ikke helt ned til bunden, og man så html/body's baggrundsfarve (`--bg`, næsten sort) i stedet.
 
