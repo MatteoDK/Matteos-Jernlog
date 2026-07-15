@@ -27,13 +27,11 @@
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;overflow:hidden;overscroll-behavior-y:none;}
-  /* height:100dvh (dynamisk viewport-højde) forhindrer at mobilbrowserens adresselinje/værktøjslinje
-     som viser/skjuler sig får bundnavigationen til at "hoppe" — falder tilbage til 100% på ældre browsere. */
-  html,body{height:100dvh;}
 
-  /* App-skal: header og bundnav er faste, kun <main> scroller. Undgår at bundnavigationen
-     dækker for indhold (fx kommentarfeltet nederst i feedet), og at den flytter sig ved sideskift. */
-  .app{max-width:520px;margin:0 auto;height:100%;height:100dvh;display:flex;flex-direction:column;}
+  /* App-skal: header og bundnav er faste, kun <main> scroller. position:fixed + inset:0 (i stedet for
+     height:100dvh) sikrer at app'en altid dækker HELE skærmen præcist, også på iPhones tilføjet til
+     hjemmeskærmen, hvor dvh-baseret højde nogle gange efterlader en lille sort stribe nederst. */
+  .app{position:fixed;inset:0;max-width:520px;margin:0 auto;display:flex;flex-direction:column;}
 
   /* Bundnavigation — almindeligt element nederst i flex-kolonnen, ikke "fixed" */
   .bottom-nav{flex:0 0 auto;background:var(--bg-elevated);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom);}
@@ -228,7 +226,7 @@
 <body>
 <div class="app" id="app">
   <header class="topbar">
-    <div class="title" id="appTitleBtn" style="cursor:pointer;"><span class="dot"></span> Master Matteos Jernlog</div>
+    <div class="title" id="appTitleBtn" style="cursor:pointer;"><span class="dot"></span> Master Matteos Jernlog-app</div>
     <button class="menu-btn" id="menuBtn" style="display:none;">☰</button>
   </header>
 
