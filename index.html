@@ -2617,9 +2617,12 @@ function renderAdminApprovals(){
     return;
   }
   main.innerHTML = '<h2 class="section" style="margin-top:0;">Godkend brugere</h2><div class="empty-state">Henter…</div>';
-  sb.from("profiles").select("*").eq("approved", false).order("created_at", {ascending:true}).then(function(res){
+  sb.from("profiles").select("*").order("created_at", {ascending:true}).then(function(res){
     if(res.error) throw res.error;
-    var pending = res.data||[];
+    var all = res.data||[];
+    var pending = all.filter(function(p){ return p.approved===false; });
+    var myEmail = (session.user.email||"").toLowerCase();
+
     var html = '<h2 class="section" style="margin-top:0;">Venter på godkendelse</h2>';
     html += '<div class="muted" style="margin-bottom:16px;">Nye brugere kan ikke bruge appen før du har accepteret dem her.</div>';
     if(pending.length===0){
@@ -2634,6 +2637,26 @@ function renderAdminApprovals(){
       });
       html += '</div>';
     }
+
+    html += '<h2 class="section">Alle oprettede brugere ('+all.length+')</h2>';
+    if(all.length===0){
+      html += '<div class="card"><div class="empty-state">Ingen brugere endnu.</div></div>';
+    } else {
+      html += '<div class="card" style="padding:0;">';
+      all.forEach(function(p){
+        var isSelf = (p.email||"").toLowerCase()===myEmail;
+        var statusTxt = p.approved ? '<span style="color:var(--green);font-weight:700;">Godkendt</span>' : '<span style="color:var(--red);font-weight:700;">Afventer</span>';
+        var createdTxt = p.created_at ? fmtDateDisplay(String(p.created_at).slice(0,10)) : "";
+        html += '<div class="list-row" data-uid="'+p.id+'">';
+        html += '<div><div class="name">'+escapeHtml(p.username||"(intet brugernavn)")+(isSelf?' <span class="muted">(dig)</span>':'')+'</div><div class="muted">'+escapeHtml(p.email||"")+' · '+createdTxt+'</div></div>';
+        html += '<div style="display:flex;align-items:center;gap:8px;">'+statusTxt;
+        if(p.approved && !isSelf) html += '<button class="btn small danger" data-revoke="'+p.id+'">Fjern adgang</button>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
     main.innerHTML = html;
 
     main.querySelectorAll("[data-approve]").forEach(function(btn){
@@ -2654,6 +2677,18 @@ function renderAdminApprovals(){
         sb.from("profiles").delete().eq("id", btn.getAttribute("data-reject")).then(function(res2){
           if(res2.error){ showToast("Kunne ikke afvise: "+(res2.error.message||"")); btn.disabled=false; return; }
           showToast("Ansøgning afvist");
+          refreshMenuBadges();
+          renderAdminApprovals();
+        });
+      });
+    });
+    main.querySelectorAll("[data-revoke]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        if(!confirm("Fjern denne brugers adgang? Personen skal godkendes igen for at kunne bruge appen.")) return;
+        btn.disabled = true;
+        sb.from("profiles").update({approved:false}).eq("id", btn.getAttribute("data-revoke")).then(function(res2){
+          if(res2.error){ showToast("Kunne ikke fjerne adgang: "+(res2.error.message||"")); btn.disabled=false; return; }
+          showToast("Adgang fjernet");
           refreshMenuBadges();
           renderAdminApprovals();
         });
