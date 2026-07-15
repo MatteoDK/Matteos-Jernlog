@@ -27,7 +27,15 @@
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;overscroll-behavior-y:none;}
-  body{padding-bottom:calc(24px + env(safe-area-inset-bottom));}
+  body{padding-bottom:calc(80px + env(safe-area-inset-bottom));}
+
+  /* Bundnavigation */
+  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--bg-elevated);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom);}
+  .bn-item{flex:1;background:none;border:none;color:var(--text-dim);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 2px 10px;font-family:inherit;}
+  .bn-ic{font-size:20px;line-height:1;}
+  .bn-label{font-size:10px;font-weight:700;white-space:nowrap;}
+  .bn-item.active{color:var(--yellow);}
+  .bn-item:active{background:var(--bg-card);}
   button, input, select{font-family:inherit;}
   .app{max-width:520px;margin:0 auto;min-height:100%;}
 
@@ -91,7 +99,7 @@
   .trend.same{color:var(--text-dim);}
 
   /* Toast */
-  .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--red);color:#fff;padding:14px 20px;border-radius:14px;font-weight:800;font-size:15px;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:200;display:none;max-width:90vw;text-align:center;}
+  .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--red);color:#fff;padding:14px 20px;border-radius:14px;font-weight:800;font-size:15px;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:200;display:none;max-width:90vw;text-align:center;}
   .toast.show{display:block;animation:pop 0.25s ease-out;}
   .toast.pr{background:var(--green);color:#062617;}
   @keyframes pop{from{transform:translate(-50%,10px);opacity:0;}to{transform:translate(-50%,0);opacity:1;}}
@@ -221,19 +229,22 @@
 
   <div class="menu-overlay" id="menuOverlay">
     <div class="menu-panel">
-      <div class="menu-item" data-view="log"><span class="ic">🏋️</span> Log øvelse</div>
-      <div class="menu-item" data-view="history"><span class="ic">📈</span> Historik/Statistik</div>
-      <div class="menu-item" data-view="feed"><span class="ic">📣</span> Feed</div>
       <div class="menu-item" data-view="comments"><span class="ic">💬</span> Kommentarer <span class="req-dot" id="commentDot" style="display:none;">0</span></div>
       <div class="menu-item" data-view="exercises"><span class="ic">📋</span> Øvelser</div>
-      <div class="menu-item" data-view="calendar"><span class="ic">📅</span> Kalender</div>
-      <div class="menu-item" data-view="wins"><span class="ic">🔥</span> Wins & Plateaus</div>
       <div class="menu-item" data-view="friends"><span class="ic">👥</span> Venner <span class="req-dot" id="friendReqDot" style="display:none;">0</span></div>
       <div class="menu-item" id="menuLogout"><span class="ic">🚪</span> Log ud <span class="muted" id="menuUser" style="margin-left:auto;font-size:12px;"></span></div>
     </div>
   </div>
 
   <main id="main"></main>
+
+  <nav class="bottom-nav" id="bottomNav" style="display:none;">
+    <button class="bn-item" data-view="feed"><span class="bn-ic">📣</span><span class="bn-label">Feed</span></button>
+    <button class="bn-item" data-view="calendar"><span class="bn-ic">📅</span><span class="bn-label">Kalender</span></button>
+    <button class="bn-item" data-view="log"><span class="bn-ic">🏋️</span><span class="bn-label">Log øvelse</span></button>
+    <button class="bn-item" data-view="history"><span class="bn-ic">📈</span><span class="bn-label">Historik</span></button>
+    <button class="bn-item" data-view="dig"><span class="bn-ic">🙂</span><span class="bn-label">Dig</span></button>
+  </nav>
 </div>
 
 <div class="modal-overlay" id="modalOverlay">
@@ -530,7 +541,7 @@ function trendArrow(t){
 }
 
 /* ---------------- Router / state ---------------- */
-var state = { view:"log", selectedExerciseId:null, viewUser:null, histBack:"history", calMonth:null, friendCalMonth:null, calSelectedDay:null, feedExpanded:{}, feedFocus:null };
+var state = { view:"log", selectedExerciseId:null, viewUser:null, histBack:"history", calMonth:null, friendCalMonth:null, calSelectedDay:null, feedExpanded:{}, feedFocus:null, digExpanded:{} };
 var main = document.getElementById("main");
 
 function render(){
@@ -542,7 +553,7 @@ function render(){
   else if(state.view==="exercises") renderExercisesPage();
   else if(state.view==="calendar") renderCalendarPage();
   else if(state.view==="comments") renderCommentsPage();
-  else if(state.view==="wins") renderWinsPlateaus();
+  else if(state.view==="dig") renderDig();
   else if(state.view==="friends") renderFriends();
   else if(state.view==="friendProfile") renderFriendProfile(state.viewUser);
 }
@@ -552,6 +563,7 @@ function goto(view, extra){
   if(view!=="exerciseHistory" && view!=="friendProfile") state.viewUser = (view==="feed"||view==="friends") ? null : state.viewUser;
   if(extra) Object.assign(state, extra);
   render();
+  updateBottomNavActive();
   window.scrollTo(0,0);
 }
 
@@ -595,6 +607,7 @@ document.getElementById("menuLogout").addEventListener("click", function(){
   sb.auth.signOut().catch(function(){});
   session = null; myProfile = null; memEx = []; memLogs = []; friendCache = null;
   document.getElementById("menuBtn").style.display = "none";
+  document.getElementById("bottomNav").style.display = "none";
   renderLogin("in");
 });
 function updateMenuActive(){
@@ -604,6 +617,21 @@ function updateMenuActive(){
   var mu = document.getElementById("menuUser");
   mu.textContent = myProfile ? "("+myProfile.username+")" : "";
   refreshMenuBadges();
+}
+
+/* ---------------- Bundnavigation ---------------- */
+document.querySelectorAll(".bn-item[data-view]").forEach(function(item){
+  item.addEventListener("click", function(){
+    state.viewUser = null;
+    goto(item.getAttribute("data-view"));
+  });
+});
+function updateBottomNavActive(){
+  document.querySelectorAll(".bn-item[data-view]").forEach(function(item){
+    var v = item.getAttribute("data-view");
+    var active = v===state.view || (v==="history" && state.view==="exerciseHistory" && !state.viewUser && state.histBack!=="exercises");
+    item.classList.toggle("active", active);
+  });
 }
 
 /* ---------- Ulæste kommentarer (in-app notifikation) ---------- */
@@ -661,6 +689,7 @@ modalOverlay.addEventListener("click", function(e){ if(e.target===modalOverlay) 
    ========================================================= */
 function renderLogin(mode, prefillEmail){
   document.getElementById("menuBtn").style.display = "none";
+  document.getElementById("bottomNav").style.display = "none";
   var html = '<div class="login-wrap">';
   html += '<div class="login-logo">🏋️</div>';
   html += '<div class="login-title">Master Matteos Jernlog</div>';
@@ -839,6 +868,7 @@ function detectColumns(){
 
 function bootAfterLogin(){
   document.getElementById("menuBtn").style.display = "flex";
+  document.getElementById("bottomNav").style.display = "flex";
   renderLoadingScreen("Henter dine data…");
   ensureProfile().then(function(){
     return detectColumns();
@@ -854,7 +884,9 @@ function bootAfterLogin(){
     maybeFixEzbarStartdata();
     maybeMigrateVariants();
     updateMenuActive();
-    goto("log");
+    /* Åbn "Log øvelse" hvis der er logget et sæt inden for de sidste 30 min
+       (undgår at skulle navigere derhen igen mellem sæt), ellers Feed. */
+    goto(hasRecentOwnActivity() ? "log" : "feed");
   }).catch(function(err){
     renderLoadingScreen("Kunne ikke hente data — tjek din internetforbindelse og prøv igen.");
     var retry = document.createElement("button");
@@ -2144,13 +2176,75 @@ function renderRankingRow(item){
   return html;
 }
 
-function renderWinsPlateaus(){
+function renderDig(){
   state.viewUser = null;
-  var ranking = computeProgressRanking();
-  var html = '<h2 class="section">Wins & Plateaus</h2>';
-  html += '<div class="muted" style="margin-bottom:16px;">Baseret på dine seneste træningsgange pr. øvelse (op til 10), sammenlignet først vs. sidst i vinduet.</div>';
+  var me = session.user.id;
+  var exByIdMine = {};
+  memEx.forEach(function(e){ exByIdMine[e.id] = e; });
+  var workouts = buildUserWorkouts(me, memLogs, exByIdMine);
+  workouts.sort(function(a,b){ return b.start-a.start; });
+  workouts = workouts.slice(0, 15);
 
+  var html = '<h2 class="section" style="margin-top:0;">Dig</h2>';
+
+  html += '<h2 class="section" style="margin-top:0;">Seneste aktiviteter</h2>';
+  if(workouts.length===0){
+    html += '<div class="card"><div class="empty-state">Ingen træninger endnu. Log din første øvelse! 🏋️</div></div>';
+  } else {
+    workouts.forEach(function(w){
+      var isLive = (Date.now() - w.end) < WORKOUT_GAP_MS;
+      var dateIso = new Date(w.start).toISOString().slice(0,10);
+      var durMin = Math.round((w.end - w.start)/60000);
+      var whenTxt;
+      if(isLive){
+        whenTxt = "Startede kl. "+fmtClock(w.start)+" · "+w.exercises.length+" øvelse"+(w.exercises.length===1?"":"r")+" indtil videre";
+      } else {
+        whenTxt = fmtDateDisplay(dateIso) + " · " + fmtClock(w.start) + (durMin>0 ? ("–"+fmtClock(w.end)+" · "+durMin+" min") : "") + " · " + w.exercises.length + " øvelse" + (w.exercises.length===1?"":"r");
+      }
+      var anyPR = w.exercises.some(function(x){ return x.isPR; });
+      var muscles = [];
+      w.exercises.forEach(function(x){
+        var lbl = MUSCLE_LABELS[x.muscle];
+        if(lbl && muscles.indexOf(lbl)===-1) muscles.push(lbl);
+      });
+      var prNames = w.exercises.filter(function(x){ return x.isPR; }).map(function(x){ return x.name; });
+      var key = String(w.start);
+      var expanded = !!state.digExpanded[key];
+
+      html += '<div class="feed-card" data-dkey="'+key+'" style="cursor:pointer;'+(isLive?'border-color:var(--green);':'')+'">';
+      html += '<div class="feed-head" style="margin-bottom:0;">';
+      html += '<div style="min-width:0;flex:1;">';
+      html += '<div class="feed-when" style="font-size:13px;">'+whenTxt+'</div>';
+      html += '</div>';
+      if(isLive) html += '<span class="live-badge"><span class="live-dot"></span>I gang nu</span>';
+      else if(anyPR) html += '<span class="pr-badge">🏆 PR</span>';
+      html += '</div>';
+
+      if(muscles.length) html += '<div class="muted" style="margin-top:8px;">💪 '+escapeHtml(muscles.join(" · "))+'</div>';
+      if(prNames.length) html += '<div style="margin-top:6px;font-size:13px;font-weight:700;color:var(--yellow);">🏆 PR i '+escapeHtml(prNames.join(", "))+'</div>';
+      html += '<div class="muted" style="margin-top:6px;"><span class="dig-toggle-label" style="color:var(--yellow);font-weight:700;">'+(expanded?'Skjul øvelser & sæt ▲':'Se øvelser & sæt ▼')+'</span></div>';
+
+      html += '<div class="feed-details" style="display:'+(expanded?'block':'none')+';margin-top:10px;border-top:1px solid var(--border);">';
+      w.exercises.forEach(function(x){
+        var setsTxt;
+        if(x.tracked.length===0){
+          setsTxt = "sprunget over";
+        } else {
+          setsTxt = x.tracked.map(function(s){ return formatSetShort(s, x.bodyweight); }).join(", ");
+        }
+        html += '<div class="feed-ex-line">';
+        html += '<div class="feed-ex-name">'+escapeHtml(x.name)+(x.isPR?' <span class="pr-badge" style="font-size:10px;padding:2px 6px;">🏆 PR</span>':'')+'</div>';
+        html += '<div class="feed-ex-sets">'+escapeHtml(setsTxt)+'</div>';
+        html += '</div>';
+      });
+      html += '</div>'; /* /detaljer */
+      html += '</div>'; /* /kort */
+    });
+  }
+
+  var ranking = computeProgressRanking();
   html += '<h2 class="section">🏆 Størst fremgang</h2>';
+  html += '<div class="muted" style="margin-bottom:16px;">Baseret på dine seneste træningsgange pr. øvelse (op til 10), sammenlignet først vs. sidst i vinduet.</div>';
   if(ranking.wins.length===0){
     html += '<div class="card"><div class="empty-state">Log en øvelse mindst 2 gange for at se fremgang her.</div></div>';
   } else {
@@ -2169,6 +2263,20 @@ function renderWinsPlateaus(){
   }
 
   main.innerHTML = html;
+
+  main.querySelectorAll(".feed-card[data-dkey]").forEach(function(card){
+    card.addEventListener("click", function(e){
+      if(e.target && e.target.closest && e.target.closest("input, button, a")) return;
+      var det = card.querySelector(".feed-details");
+      var lbl = card.querySelector(".dig-toggle-label");
+      if(!det) return;
+      var isOpen = det.style.display !== "none";
+      det.style.display = isOpen ? "none" : "block";
+      if(lbl) lbl.textContent = isOpen ? "Se øvelser & sæt ▼" : "Skjul øvelser & sæt ▲";
+      state.digExpanded[card.getAttribute("data-dkey")] = !isOpen;
+    });
+  });
+
   main.querySelectorAll("[data-exid]").forEach(function(row){
     row.addEventListener("click", function(){
       goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-exid"), viewUser: null, histBack:"history"});
@@ -2190,6 +2298,15 @@ var WORKOUT_GAP_MS = 30*60*1000;
 
 function effectiveTime(l){
   return (l.loggedAt!==null && l.loggedAt!==undefined) ? l.loggedAt : Date.parse(l.date+"T12:00:00Z");
+}
+
+/* Har jeg selv logget et sæt inden for de sidste 30 min? Bruges til at vælge
+   standard-side ved appstart (Log øvelse hvis i gang, ellers Feed). */
+function hasRecentOwnActivity(){
+  if(!memLogs.length) return false;
+  var latest = -Infinity;
+  memLogs.forEach(function(l){ var t = effectiveTime(l); if(t>latest) latest = t; });
+  return (Date.now() - latest) < WORKOUT_GAP_MS;
 }
 
 function groupWorkouts(logs){

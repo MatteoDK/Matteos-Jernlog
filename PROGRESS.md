@@ -32,15 +32,27 @@ Appen startede som et rent lokalt/offline-projekt (data kun på telefonen, ingen
 - localStorage bruges kun til: nød-backup ved offline-gem, læst-markering af kommentarer, historisk migreringsflag
 - Internet er påkrævet (bevidst valg, pga. cloud-backend)
 
+## Opdatering 2026-07-15 (2. runde — navigation + Dig-side)
+4 nye ændringsønsker implementeret oveni de 3 fra tidligere i dag:
+
+1. **Bundnavigation** — 5 faste knapper nederst i skærmen, venstre→højre: Feed, Kalender, Log øvelse, Historik/Statistik, Dig. Disse 5 er fjernet fra dropdown-menuen (som nu kun indeholder Kommentarer, Øvelser, Venner, Log ud). Ny CSS-klasse `.bottom-nav`/`.bn-item`, vist/skjult sammen med menuknappen (login/logout), fremhæver aktiv side automatisk ved al navigation (`updateBottomNavActive()` kaldt fra `goto()`).
+2. **"Dig"-side** — erstatter den gamle "Wins & Plateaus"-side (samme menupunkt, ny funktion `renderDig()`). Viser nu øverst "Seneste aktiviteter" (egne seneste træninger, Strava-agtigt: dato/tid, "I gang nu"-badge, PR-badges, udvidelig "Se øvelser & sæt"), og herunder den eksisterende Wins & Plateaus-ranking uændret. Bruger kun data der allerede er i hukommelsen (memEx/memLogs) — ingen ekstra netværkskald.
+3. **App-boot: Feed eller Log øvelse** — appen åbner nu automatisk på "Log øvelse" hvis du har logget et sæt inden for de sidste 30 min (ny hjælpefunktion `hasRecentOwnActivity()`), ellers på "Feed".
+4. **Live-badge/varighed i feed** — tjekket, var allerede korrekt implementeret (ingen ændring nødvendig).
+
+**Verificeret grundigt denne gang:** Byggede en jsdom-testsimulering (fake Supabase-klient, ingen rigtig netværksadgang) og kørte appen igennem to scenarier — "ingen nylig aktivitet" (lander korrekt på Feed) og "aktivitet for 5 min siden" (lander korrekt på Log øvelse). Testede desuden klik gennem alle 5 bundnav-faner, og at Dig-siden renderer "Seneste aktiviteter" + øvelse/sæt-udvidelse + Wins & Plateaus uden JS-fejl. Ingen fejl fundet.
+**Stadig ikke testet:** rigtig browser/telefon, og PR-toast/farve-ændringerne (kræver faktisk at logge et sæt, ikke dækket af simuleringen).
+
 ## Features (ifølge seneste overleveringsnotat: alle bygget og testet)
 - Log øvelse (søg/vælg, vægt+reps, auto-udfyldt vægt, PR-toast, "foreslået i dag" ud fra muskelgruppe)
 - Historik/statistik pr. øvelse (grafer, sæt-historik, PR-badge)
-- Feed (træninger grupperet, PR-øvelser, kommentar-antal, "i gang nu"-badge)
+- Feed (træninger grupperet, PR-øvelser, kommentar-antal, "i gang nu"-badge, kommentarer altid synlige)
 - Kommentarer (notifikationer, ulæst-tæller)
 - Øvelser-siden (grupperet efter muskelgruppe, træk-og-slip rækkefølge)
 - Kalender (trænede dage, streaks, venners kalender)
 - Venner (søg, anmod, acceptér, venneprofil med read-only historik)
-- Wins & Plateaus (procent-ranking)
+- Dig (seneste aktiviteter + Wins & Plateaus — tidligere kaldt "Wins & Plateaus")
+- Bundnavigation: Feed, Kalender, Log øvelse, Historik/Statistik, Dig
 
 ## Status lige nu
 Ifølge sidste overleveringsnotat: koden er færdig og testet. Muligvis mangler Matteo stadig at:
@@ -57,10 +69,10 @@ Ifølge sidste overleveringsnotat: koden er færdig og testet. Muligvis mangler 
 - Supabase gratis-plan pauser projektet efter ~1 uges inaktivitet (skal vækkes manuelt på supabase.com)
 
 ## Næste skridt
-- Upload `Jernlog App/index.html` (den opdaterede fil) til GitHub-repoet — erstat den gamle `index.html`
-- Upload `icon-180-v4.png` (ligger på Matteos skrivebord ifølge anden chat) til samme repo
+- Upload `Jernlog App/index.html` (den opdaterede fil, nu inkl. bundnavigation + Dig-side) til GitHub-repoet — erstat den gamle `index.html`
+- **Ikonfilen (`icon-180-v4.png`) skal IKKE uploades igen medmindre den selv er ændret** — den er en engangsting, ikke noget der gentages ved hver kodeopdatering. Ret denne linje hvis det stadig er uafklaret om den blev uploadet første gang.
 - Test hele flowet på telefonen: opret konto med matteoverdiani.dk@gmail.com, bekræft email, tjek om 404-siden stadig dukker op
-- Test de 3 UI-rettelser i praksis (PR-farve, feed-kommentarer, Skift-knap)
+- Test alle 7 rettelser i praksis: PR-farve, feed-kommentarer, Skift-knap, bundnavigation, Dig-side, auto-åbning på Feed/Log øvelse, live-badge/varighed
 - Hvis 404 stadig sker: hent faktiske Supabase Auth-indstillinger (Site URL / Redirect URLs) direkte, i stedet for at stole på gengivelse fra anden chat
 
 ## Sådan bruges denne fil
