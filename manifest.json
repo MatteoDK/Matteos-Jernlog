@@ -1,0 +1,16 @@
+{
+  "name": "Master Matteos Jernlog-app",
+  "short_name": "Jernlog",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1b1b1e",
+  "theme_color": "#101012",
+  "icons": [
+    {
+      "src": "icon-180-v1.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

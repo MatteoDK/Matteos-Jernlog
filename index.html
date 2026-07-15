@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Master Matteos Jernlog">
 <meta name="theme-color" content="#101012">
 <link rel="apple-touch-icon" href="icon-180-v1.png">
+<link rel="manifest" href="manifest.json">
 <title>Master Matteos Jernlog</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
@@ -32,7 +33,7 @@
      hvor man ser html/body's baggrund i stedet for bundnav'ens. Ved at gøre den farve identisk med
      bundnav'ens baggrund, er kanten usynlig uanset om safe-area-beregningen rammer helt præcist.
      <main> og header får deres egen eksplicitte --bg-farve nedenfor, så resten af appen ser ud som før. */
-  html,body{margin:0;padding:0;background:var(--bg-elevated);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;overflow:hidden;overscroll-behavior-y:none;}
+  html,body{margin:0;padding:0;background:var(--bg-elevated);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;height:-webkit-fill-available;overflow:hidden;overscroll-behavior-y:none;}
 
   /* App-skal: header og bundnav er faste, kun <main> scroller. position:fixed + inset:0 (i stedet for
      height:100dvh) sikrer at app'en altid dækker HELE skærmen præcist, også på iPhones tilføjet til

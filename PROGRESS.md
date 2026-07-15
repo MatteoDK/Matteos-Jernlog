@@ -2,6 +2,19 @@
 
 Sidst opdateret: 2026-07-15
 
+## Opdatering 2026-07-15 (8. runde — sort bjælke under bundnav, forsøg 3: rigtig manifest.json)
+Matteo sammenlignede med Strava-appen og pressede på — med rette, for Strava beviser at det GODT kan lade sig gøre at få bundnav'en helt ned uden sort bjælke. Fandt en sandsynlig hovedårsag: appen har KUN de gamle "apple-mobile-web-app-*" meta-tags, men ingen rigtig **Web App Manifest** (`manifest.json`) — det er den moderne standard som nyere iOS-versioner håndterer markant bedre, bl.a. i forhold til safe-area/viewport i hjemmeskærm-tilstand.
+
+**Rettelser:**
+- Ny fil `manifest.json` tilføjet (name, display:"standalone", background_color/theme_color, ikon-reference).
+- `<link rel="manifest" href="manifest.json">` tilføjet i `index.html`'s `<head>`.
+- Ekstra defensiv CSS: `height:-webkit-fill-available` tilføjet til html/body (kendt fix for et specifikt WebKit-bug-mønster med denne præcise symptom).
+- Alle tidligere forsøg (position:fixed;inset:0, farve-matching, større knap-række) er bevaret — dette er lag oveni, ikke en erstatning.
+
+⚠️ **VIGTIGT:** En Web App Manifest læses kun af iOS på selve installationstidspunktet ("Føj til hjemmeskærm"). Det er IKKE nok at uploade filen og genåbne den eksisterende hjemmeskærm-genvej — Matteo (og alle andre brugere) skal **slette den nuværende hjemmeskærm-genvej og tilføje appen igen fra bunden** for at manifestet reelt træder i kraft. Dette er ud over den service worker-relaterede engangs-geninstallation der allerede er sket tidligere.
+
+**Ikke testet på telefonen endnu — kræver slet+geninstaller, ikke bare genupload.**
+
 ## Opdatering 2026-07-15 (7. runde — nyt ikon, bundnav-plads, kommentar-forbedringer)
 1. **Nyt app-ikon** — lavet fra Matteos nyeste ChatGPT-genererede billede (samme figur/stil, men tekst der fylder bredden bedre og næsten intet tomrum i bunden). Beskåret tæt og kvadratisk, gemt som `icon-180-v1.png` (overskriver den forrige — filnavnet er uændret, så `index.html` skal IKKE opdateres for dette).
 2. **Bundnav-plads** — iOS reserverer en lille strimmel nederst til "swipe hjem"-bevægelsen, hvor der ikke kan sidde trykbare knapper (kan ikke fjernes helt). I stedet er selve knap-rækken gjort højere (mere padding, større ikon/tekst), så knapperne fylder mere af området og den reserverede strimmel virker mindre/mere ubetydelig.
