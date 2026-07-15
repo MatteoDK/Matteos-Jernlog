@@ -84,7 +84,7 @@
   .toggle-opt.selected{background:var(--yellow);color:#141400;border-color:var(--yellow);}
 
   /* PR / trend badges */
-  .pr-badge{background:var(--red);color:#fff;font-size:12px;font-weight:800;padding:3px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;}
+  .pr-badge{background:var(--green);color:#062617;font-size:12px;font-weight:800;padding:3px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;}
   .trend{font-size:13px;font-weight:700;}
   .trend.up{color:var(--green);}
   .trend.down{color:var(--red);}
@@ -93,6 +93,7 @@
   /* Toast */
   .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--red);color:#fff;padding:14px 20px;border-radius:14px;font-weight:800;font-size:15px;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:200;display:none;max-width:90vw;text-align:center;}
   .toast.show{display:block;animation:pop 0.25s ease-out;}
+  .toast.pr{background:var(--green);color:#062617;}
   @keyframes pop{from{transform:translate(-50%,10px);opacity:0;}to{transform:translate(-50%,0);opacity:1;}}
 
   /* Set list */
@@ -103,6 +104,8 @@
   .icon-btn{background:none;border:none;color:var(--text-dim);font-size:16px;padding:6px;}
   .icon-btn.edit:active{color:var(--yellow);}
   .icon-btn.del:active{color:var(--red);}
+  .skift-ex-btn{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;font-size:10.5px;line-height:1.2;font-weight:700;padding:3px 10px;text-align:center;}
+  .skift-ex-btn:active{background:var(--yellow-dim);color:var(--text);}
 
   .session-block{margin-bottom:16px;}
   .session-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
@@ -553,10 +556,10 @@ function goto(view, extra){
 }
 
 /* ---------------- Toast ---------------- */
-function showToast(msg, ms){
+function showToast(msg, ms, type){
   var t = document.getElementById("toast");
   t.textContent = msg;
-  t.classList.add("show");
+  t.className = "toast show" + (type ? " " + type : "");
   clearTimeout(t._timer);
   t._timer = setTimeout(function(){ t.classList.remove("show"); }, ms||2200);
 }
@@ -1085,7 +1088,7 @@ function renderLogForm(exObj){
   var html = '<div class="card">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
   html += '<div style="font-size:17px;font-weight:800;">'+escapeHtml(exObj.name)+'</div>';
-  html += '<div style="display:flex;gap:4px;"><button class="icon-btn" id="renameExBtn" style="font-size:16px;">✎</button><button class="icon-btn" id="clearExBtn" style="font-size:14px;">Skift ✕</button></div>';
+  html += '<div style="display:flex;gap:4px;"><button class="icon-btn" id="renameExBtn" style="font-size:16px;">✎</button><button class="icon-btn skift-ex-btn" id="clearExBtn">Skift<br>øvelse</button></div>';
   html += '</div>';
   if(setNumsSorted.length){
     html += '<div class="muted" style="margin-bottom:14px;">';
@@ -1274,7 +1277,7 @@ function attachLogFormHandlers(){
       var isPR = !prevBest || newScore > prevBest.topScore;
 
       if(isPR){
-        showToast("🏆 Ny PR på "+exObj.name+"!");
+        showToast("🏆 Ny PR på "+exObj.name+"!", null, "pr");
       } else {
         showToast("Sæt "+setNum+" gemt ✓");
       }
@@ -2344,9 +2347,9 @@ function renderFeed(){
 
       if(muscles.length) html += '<div class="muted" style="margin-top:8px;">💪 '+escapeHtml(muscles.join(" · "))+'</div>';
       if(prNames.length) html += '<div style="margin-top:6px;font-size:13px;font-weight:700;color:var(--yellow);">🏆 PR i '+escapeHtml(prNames.join(", "))+'</div>';
-      html += '<div class="muted" style="margin-top:6px;">'+(comments.length ? '💬 '+comments.length+' kommentar'+(comments.length===1?'':'er')+' · ' : '')+'<span style="color:var(--yellow);font-weight:700;" id="fdl_'+wi+'">'+(expanded?'Skjul detaljer ▲':'Se detaljer ▼')+'</span></div>';
+      html += '<div class="muted" style="margin-top:6px;"><span style="color:var(--yellow);font-weight:700;" id="fdl_'+wi+'">'+(expanded?'Skjul øvelser & sæt ▲':'Se øvelser & sæt ▼')+'</span></div>';
 
-      /* detaljer (foldet sammen som standard) */
+      /* øvelse/sæt-detaljer (foldet sammen som standard) */
       html += '<div class="feed-details" id="fd_'+wi+'" style="display:'+(expanded?'block':'none')+';margin-top:10px;border-top:1px solid var(--border);">';
       w.exercises.forEach(function(x){
         var setsTxt;
@@ -2360,15 +2363,19 @@ function renderFeed(){
         html += '<div class="feed-ex-sets">'+escapeHtml(setsTxt)+'</div>';
         html += '</div>';
       });
+      html += '</div>'; /* /øvelse-detaljer */
+
+      /* kommentarer — altid synlige, uafhængigt af "se detaljer" */
+      html += '<div class="feed-comments" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">';
       if(comments.length){
-        html += '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:4px;">';
+        html += '<div style="margin-bottom:4px;">';
         comments.forEach(function(c){
           html += '<div class="comment-line"><span class="comment-author">'+escapeHtml(nameById[c.author]||"ukendt")+'</span><span class="comment-body">'+escapeHtml(c.body)+'</span></div>';
         });
         html += '</div>';
       }
       html += '<div class="comment-input-row"><input type="text" id="cin_'+wi+'" placeholder="Skriv en kommentar…" maxlength="500"><button class="comment-send" data-wi="'+wi+'">Send</button></div>';
-      html += '</div>'; /* /detaljer */
+      html += '</div>'; /* /kommentarer */
       html += '</div>'; /* /kort */
     });
 
@@ -2385,7 +2392,7 @@ function renderFeed(){
         var lbl = document.getElementById("fdl_"+wi2);
         var isOpen = det.style.display !== "none";
         det.style.display = isOpen ? "none" : "block";
-        if(lbl) lbl.textContent = isOpen ? "Se detaljer ▼" : "Skjul detaljer ▲";
+        if(lbl) lbl.textContent = isOpen ? "Se øvelser & sæt ▼" : "Skjul øvelser & sæt ▲";
         state.feedExpanded[key2] = !isOpen;
       });
     });
@@ -2399,7 +2406,7 @@ function renderFeed(){
         var fdet = document.getElementById("fd_"+focusIdx);
         var flbl = document.getElementById("fdl_"+focusIdx);
         if(fdet) fdet.style.display = "block";
-        if(flbl) flbl.textContent = "Skjul detaljer ▲";
+        if(flbl) flbl.textContent = "Skjul øvelser & sæt ▲";
         var fcard = main.querySelector('.feed-card[data-wkey="'+focusIdx+'"]');
         if(fcard){
           fcard.style.borderColor = "var(--yellow)";

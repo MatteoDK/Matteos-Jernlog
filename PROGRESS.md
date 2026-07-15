@@ -1,6 +1,19 @@
 # Matteos Jernlog — status
 
-Sidst opdateret: 2026-07-14 (opdateret ud fra projektets Context-filer)
+Sidst opdateret: 2026-07-15
+
+## Opdatering 2026-07-15
+Opklarede uoverensstemmelsen fra sidste session: den cloud-baserede version (login/Supabase/feed/venner) var aldrig blevet uploadet til GitHub — den lå kun i en anden chats arbejdsmappe. Den fulde, korrekte `index.html` er nu hentet ind, 3 rettelser er lavet, og filen ligger klar til upload i `Jernlog App/index.html` i denne mappe:
+
+1. **PR-farve** — `.pr-badge` og PR-toasten ("🏆 Ny PR på X!") er ændret fra rød til grøn (`var(--green)`), så det ikke ligner en fejl. Andre toasts (fejlbeskeder m.m.) er stadig røde som før — kun PR-beskeden er grøn, via en ny `.toast.pr`-klasse.
+2. **Feed: kommentarer altid synlige** — Kommentarliste + kommentarfelt er flyttet uden for "se detaljer"-sektionen og er nu altid synlige på hvert opslag. "Se detaljer"-knappen er omdøbt til "Se øvelser & sæt" og styrer nu kun visning af de præcise øvelser/sæt/kg.
+3. **"Skift"-knap** — Omdøbt fra "Skift ✕" til to linjer "Skift" / "øvelse", med ny baggrundsfarve (`--bg-card` + border) så den er mere synlig. Klasse: `.skift-ex-btn`.
+4. **404 efter email-verificering — IKKE rettet i kode.** Koden sender ingen egen redirect (ingen `emailRedirectTo`), så det er udelukkende styret af Supabase Auths "Site URL"-indstilling. Ifølge den anden chat er Site URL sat til `https://matteodk.github.io/Matteos-Jernlog/`, hvilket burde virke uden 404 — MEN det forklarer ikke hvorfor Matteo faktisk oplevede en ægte GitHub 404-side (den gamle `index.html` findes jo på den URL, så den burde vises, ikke en 404). **Anbefaling:** test verificeringsflowet igen efter at den nye `index.html` er uploadet. Hvis 404-siden stadig dukker op, skal vi se de faktiske indstillinger direkte i Supabase Auth (Site URL + Redirect URLs, skærmbillede eller kopieret tekst) i stedet for at stole på en gengivelse fra en anden chat.
+
+**Verificeret:** JS-koden er tjekket for syntaksfejl efter alle 3 rettelser (bestået).
+**Ikke verificeret:** Rettelserne er ikke testet i en rigtig browser/telefon endnu — kun læst og redigeret som tekst.
+
+## Tidligere status (2026-07-14, opdateret ud fra projektets Context-filer)
 
 ## Formål
 "Strava for vægtløftning" — personlig styrketræning-tracker delt mellem Matteo og hans venner (fx Thor). Log øvelser, sæt, reps, vægt, se grafer/statistik og PR-tracking (personlige rekorder), og se venners træning i en feed.
@@ -44,7 +57,11 @@ Ifølge sidste overleveringsnotat: koden er færdig og testet. Muligvis mangler 
 - Supabase gratis-plan pauser projektet efter ~1 uges inaktivitet (skal vækkes manuelt på supabase.com)
 
 ## Næste skridt
-- (Udfyld: hvilke ændringsønsker har Matteo nu?)
+- Upload `Jernlog App/index.html` (den opdaterede fil) til GitHub-repoet — erstat den gamle `index.html`
+- Upload `icon-180-v4.png` (ligger på Matteos skrivebord ifølge anden chat) til samme repo
+- Test hele flowet på telefonen: opret konto med matteoverdiani.dk@gmail.com, bekræft email, tjek om 404-siden stadig dukker op
+- Test de 3 UI-rettelser i praksis (PR-farve, feed-kommentarer, Skift-knap)
+- Hvis 404 stadig sker: hent faktiske Supabase Auth-indstillinger (Site URL / Redirect URLs) direkte, i stedet for at stole på gengivelse fra anden chat
 
 ## Sådan bruges denne fil
 Ved start af ny chat om app'en: peg AI'en på denne fil ("læs PROGRESS.md og fortsæt derfra").
