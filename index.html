@@ -182,7 +182,8 @@
   .feed-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
   .avatar{width:38px;height:38px;border-radius:50%;background:var(--yellow);color:#141400;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;flex:0 0 38px;}
   .feed-who{font-weight:800;font-size:15px;}
-  .feed-when{color:var(--text-dim);font-size:12px;}
+  .feed-when{color:var(--text-dim);font-size:12px;margin-top:2px;}
+  .feed-date-badge{display:inline-block;background:var(--bg-card);color:var(--text);font-weight:800;font-size:12px;padding:3px 9px;border-radius:8px;letter-spacing:0.2px;}
   .feed-ex-line{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
   .feed-ex-line:last-child{border-bottom:none;}
   .feed-ex-name{font-weight:700;font-size:14px;}
@@ -344,6 +345,22 @@ function fmtCommentDate(iso){
   if(isNaN(d.getTime())) return "";
   var dateOnly = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   return fmtDateDisplay(dateOnly);
+}
+/* Fælles "hvornår"-blok for et træningskort (feed + Dig): datoen vises som en
+   tydelig lille badge for sig selv, resten (klokkeslæt/varighed/øvelser) står
+   under i dæmpet tekst — så det er lettere at se med det samme hvilken dag en
+   træning er fra, i stedet for at alt står i én rodet linje. */
+function renderWhenHtml(w, isLive){
+  var dateIso = new Date(w.start).toISOString().slice(0,10);
+  var durMin = Math.round((w.end - w.start)/60000);
+  var dateLabel = isLive ? "I dag" : fmtDateDisplay(dateIso);
+  var restTxt;
+  if(isLive){
+    restTxt = "Startede kl. "+fmtClock(w.start)+" · "+w.exercises.length+" øvelse"+(w.exercises.length===1?"":"r")+" indtil videre";
+  } else {
+    restTxt = fmtClock(w.start) + (durMin>0 ? ("–"+fmtClock(w.end)+" · "+durMin+" min") : "") + " · " + w.exercises.length + " øvelse" + (w.exercises.length===1?"":"r");
+  }
+  return '<div class="feed-date-badge">'+escapeHtml(dateLabel)+'</div><div class="feed-when">'+escapeHtml(restTxt)+'</div>';
 }
 function parseWeight(str){
   if(str===null||str===undefined||str==="") return null;
@@ -603,6 +620,22 @@ function showToast(msg, ms, type){
   clearTimeout(t._timer);
   t._timer = setTimeout(function(){ t.classList.remove("show"); }, ms||2200);
 }
+
+/* ---------------- Tastatur + knap-tryk samtidig (iOS-fix) ----------------
+   På iPhone kræver det normalt to separate tryk at (1) lukke tastaturet og
+   (2) trykke på en knap bagved: første tryk bruges kun til at lukke
+   tastaturet, og selve knappens "click" udløses ikke. Fix: så snart en
+   berøring starter (touchstart, som sker FØR click) uden for det aktive
+   inputfelt, fjernes fokus (blur) med det samme — så tastaturet allerede er
+   ved at lukke når selve tryk-gestussen afsluttes, og knappens click-handler
+   når at blive udløst normalt i samme tryk. */
+document.addEventListener("touchstart", function(e){
+  var ae = document.activeElement;
+  if(!ae || (ae.tagName!=="INPUT" && ae.tagName!=="TEXTAREA")) return;
+  if(e.target === ae) return;
+  if(e.target && e.target.closest && e.target.closest("input, textarea")) return;
+  ae.blur();
+}, {passive:true});
 
 /* ---------------- App-titel = genvej til hovedskærmen ---------------- */
 var appTitleBtn = document.getElementById("appTitleBtn");
@@ -2259,16 +2292,8 @@ function renderDig(){
   if(workouts.length===0){
     html += '<div class="card"><div class="empty-state">Ingen træninger endnu. Log din første øvelse! 🏋️</div></div>';
   } else {
-    workouts.forEach(function(w){
+    workouts.forEach(function(w, wi){
       var isLive = (Date.now() - w.end) < WORKOUT_GAP_MS;
-      var dateIso = new Date(w.start).toISOString().slice(0,10);
-      var durMin = Math.round((w.end - w.start)/60000);
-      var whenTxt;
-      if(isLive){
-        whenTxt = "Startede kl. "+fmtClock(w.start)+" · "+w.exercises.length+" øvelse"+(w.exercises.length===1?"":"r")+" indtil videre";
-      } else {
-        whenTxt = fmtDateDisplay(dateIso) + " · " + fmtClock(w.start) + (durMin>0 ? ("–"+fmtClock(w.end)+" · "+durMin+" min") : "") + " · " + w.exercises.length + " øvelse" + (w.exercises.length===1?"":"r");
-      }
       var anyPR = w.exercises.some(function(x){ return x.isPR; });
       var muscles = [];
       w.exercises.forEach(function(x){
@@ -2282,7 +2307,7 @@ function renderDig(){
       html += '<div class="feed-card" data-dkey="'+key+'" style="cursor:pointer;'+(isLive?'border-color:var(--green);':'')+'">';
       html += '<div class="feed-head" style="margin-bottom:0;">';
       html += '<div style="min-width:0;flex:1;">';
-      html += '<div class="feed-when" style="font-size:13px;">'+whenTxt+'</div>';
+      html += renderWhenHtml(w, isLive);
       html += '</div>';
       if(isLive) html += '<span class="live-badge"><span class="live-dot"></span>I gang nu</span>';
       else if(anyPR) html += '<span class="pr-badge">🏆 PR</span>';
@@ -2306,6 +2331,12 @@ function renderDig(){
         html += '</div>';
       });
       html += '</div>'; /* /detaljer */
+
+      /* kommentarer — indlæses asynkront lige efter render (se loadDigComments) */
+      html += '<div class="feed-comments" id="digc_'+wi+'" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">';
+      html += '<div class="feed-comments-label">💬 Kommentarer</div>';
+      html += '<div class="muted" style="font-size:12px;">Henter…</div>';
+      html += '</div>';
       html += '</div>'; /* /kort */
     });
   }
@@ -2331,6 +2362,7 @@ function renderDig(){
   }
 
   main.innerHTML = html;
+  loadDigComments(workouts, me);
 
   main.querySelectorAll(".feed-card[data-dkey]").forEach(function(card){
     card.addEventListener("click", function(e){
@@ -2349,6 +2381,65 @@ function renderDig(){
     row.addEventListener("click", function(){
       goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-exid"), viewUser: null, histBack:"history"});
     });
+  });
+}
+
+/* Kommentarer på Dig-siden — indlæses async lige efter selve siden er tegnet
+   (så "Seneste aktiviteter"/ranking ikke skal vente på en netværkstur), og
+   fyldes ind i de tomme "digc_<i>"-beholdere pr. træningskort. Genbruger
+   samme visning/adfærd som kommentarer i feedet. */
+function loadDigComments(workouts, me){
+  if(!workouts.length) return;
+  Promise.all([
+    sb.from("comments").select("*").eq("target_user", me).order("created_at", {ascending:true}).limit(1000),
+    getAcceptedFriendIds()
+  ]).then(function(res){
+    var comRes = res[0], friendIds = res[1];
+    if(comRes.error) return;
+    var ids = [me].concat(friendIds);
+    return sb.from("profiles").select("*").in("id", ids).then(function(profRes){
+      var nameById = {};
+      (profRes.data||[]).forEach(function(p){ nameById[p.id] = p.username; });
+      var commentsByKey = {};
+      (comRes.data||[]).forEach(function(c){
+        var k = String(Date.parse(c.workout_start));
+        if(!commentsByKey[k]) commentsByKey[k] = [];
+        commentsByKey[k].push(c);
+      });
+      workouts.forEach(function(w, wi){
+        var container = document.getElementById("digc_"+wi);
+        if(!container) return;
+        var comments = commentsByKey[String(w.start)] || [];
+        var h = '<div class="feed-comments-label">💬 Kommentarer</div>';
+        if(comments.length){
+          h += '<div style="margin-bottom:4px;">';
+          comments.forEach(function(c){
+            h += '<div class="comment-line"><span class="comment-author">'+escapeHtml(nameById[c.author]||"ukendt")+'</span><span class="comment-body">'+escapeHtml(c.body)+'</span><span class="comment-date">'+escapeHtml(fmtCommentDate(c.created_at))+'</span></div>';
+          });
+          h += '</div>';
+        }
+        h += '<div class="comment-input-row"><input type="text" id="dcin_'+wi+'" placeholder="Skriv en kommentar…" maxlength="500"><button class="comment-send" data-dwi="'+wi+'">Send</button></div>';
+        container.innerHTML = h;
+        var btn = container.querySelector(".comment-send");
+        btn.addEventListener("click", function(){
+          var input = document.getElementById("dcin_"+wi);
+          var body = (input.value||"").trim();
+          if(!body) return;
+          btn.disabled = true;
+          sb.from("comments").insert({
+            target_user: me,
+            workout_start: workoutKeyISO(w),
+            author: me,
+            body: body
+          }).then(function(res2){
+            if(res2.error){ showToast("Kunne ikke sende kommentar"); btn.disabled=false; return; }
+            loadDigComments(workouts, me);
+          });
+        });
+      });
+    });
+  }).catch(function(){
+    /* stille fejl — kommentar-boksene viser bare "Henter…" ved netværksfejl, ikke kritisk */
   });
 }
 
@@ -2498,14 +2589,6 @@ function renderFeed(){
       var uname = nameById[w.userId] || "ukendt";
       var isMe = w.userId===me;
       var isLive = (Date.now() - w.end) < WORKOUT_GAP_MS;
-      var dateIso = new Date(w.start).toISOString().slice(0,10);
-      var durMin = Math.round((w.end - w.start)/60000);
-      var whenTxt;
-      if(isLive){
-        whenTxt = "Startede kl. "+fmtClock(w.start)+" · "+w.exercises.length+" øvelse"+(w.exercises.length===1?"":"r")+" indtil videre";
-      } else {
-        whenTxt = fmtDateDisplay(dateIso) + " · " + fmtClock(w.start) + (durMin>0 ? ("–"+fmtClock(w.end)+" · "+durMin+" min") : "") + " · " + w.exercises.length + " øvelse" + (w.exercises.length===1?"":"r");
-      }
       var anyPR = w.exercises.some(function(x){ return x.isPR; });
       var key = w.userId + "|" + w.start;
       var comments = commentsByKey[key] || [];
@@ -2524,7 +2607,7 @@ function renderFeed(){
       html += '<div class="avatar">'+escapeHtml(uname.slice(0,1).toUpperCase())+'</div>';
       html += '<div style="min-width:0;flex:1;">';
       html += '<div class="feed-who"'+(isMe?'':' style="cursor:pointer;" data-gotouser="'+w.userId+'"')+'>'+escapeHtml(uname)+(isMe?' <span class="muted">(dig)</span>':'')+'</div>';
-      html += '<div class="feed-when">'+whenTxt+'</div>';
+      html += renderWhenHtml(w, isLive);
       html += '</div>';
       if(isLive) html += '<span class="live-badge"><span class="live-dot"></span>I gang nu</span>';
       else if(anyPR) html += '<span class="pr-badge">🏆 PR</span>';

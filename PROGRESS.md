@@ -2,6 +2,17 @@
 
 Sidst opdateret: 2026-07-15
 
+## Opdatering 2026-07-15 (12. runde — dato tydeligere, tastatur+knap-fix, kommentarer i Dig)
+Sort bjælke-fixet (version 15.7-C) er bekræftet virkende på telefonen. Tre nye ting lavet:
+
+1. **Tydeligere dato på aktiviteter (feed + Dig)** — datoen står nu som en lille tydelig badge/pille for sig selv (fx "I dag"/"I går"/"14. jul") frem for at være klemt ind i en lang, rodet linje sammen med klokkeslæt/varighed/øvelsesantal. Ny fælles funktion `renderWhenHtml()` bruges begge steder, så det er ens og konsistent.
+2. **Knap-tryk mens tastatur er åbent** — kendt iOS-problem hvor første tryk uden for et aktivt inputfelt kun lukker tastaturet uden at aktivere knappen bagved. Løst med et globalt `touchstart`-lag der fjerner fokus fra inputfeltet med det samme (før selve trykket når at blive et "click"), så knappens funktion nu udløses i samme tryk.
+3. **Kommentarer i Dig-siden** — man kan nu se og skrive kommentarer på sine egne aktiviteter under "Dig", ikke kun i feedet. Indlæses asynkront lige efter selve siden er tegnet (så resten af siden ikke skal vente på en netværkstur), viser samme kommentar-visning som feedet (forfatter, tekst, dato, "Kommentarer"-label).
+
+Alt testet med jsdom (ingen JS-fejl; dato-badge bekræftet i både feed og Dig; kommentar fra ven vist korrekt i Dig; ny kommentar sendt fra Dig-siden virker og gemmes). **Ikke testet på en rigtig telefon endnu.**
+
+**Skal uploades til GitHub:** kun `index.html` (ingen nye filer denne gang).
+
 ## Opdatering 2026-07-15 (11. runde — SORT BJÆLKE LØST, fix lagt ind i appen)
 `bundtest2.html` (statusbar-stil `black` i stedet for `black-translucent`) beviste løsningen på telefonen: grøn safe-area-stribe helt nede ved skærmkanten, ingen bjælke, toppen stadig pæn. Fixet er nu overført til appen:
 - `index.html`: `apple-mobile-web-app-status-bar-style` ændret til `black`; html/body-baggrund tilbage til `--bg` (matcher header ved evt. statusbar-underlap i toppen); forklarende kommentar opdateret; version hævet til **15.7-C**.
