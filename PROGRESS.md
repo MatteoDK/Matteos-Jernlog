@@ -2,6 +2,17 @@
 
 Sidst opdateret: 2026-07-15
 
+## Opdatering 2026-07-15 (6. runde — sort bjælke under bundnav, forsøg 2)
+Matteo bekræftede via skærmbillede at der stadig var en tydelig sort stribe under bundnavigationen på hjemmeskærm-appen (efter forrige `position:fixed;inset:0`-rettelse var uploadet og appen geninstalleret). Årsag (mest sandsynlig): `env(safe-area-inset-bottom)` giver i nogle tilfælde ikke ekstra plads korrekt til et element der ligger inde i et `position:fixed;inset:0`-element på iOS hjemmeskærm-apps — så bundnav'ens baggrund nåede ikke helt ned til bunden, og man så html/body's baggrundsfarve (`--bg`, næsten sort) i stedet.
+
+**Rettelse (defensiv, virker uanset præcis årsag):**
+- `html,body` baggrund ændret fra `--bg` til `--bg-elevated` (samme farve som bundnav'en) — så selv hvis der er en lille kant/gab et sted, matcher farven bundnav'en i stedet for at se sort/forkert ud.
+- `.app` har nu selv en eksplicit `background:var(--bg-elevated)` som ekstra sikkerhed.
+- `main` har fået en eksplicit `background:var(--bg)` (den mørkere farve), så resten af appen ser ud som før — kun bundnav-området er påvirket.
+- `.bottom-nav`'s `padding-bottom` er ændret til `max(env(safe-area-inset-bottom),12px)` — sikrer minimum 12px baggrund under ikonerne, selv hvis `env()` skulle give 0.
+
+Syntaks-tjekket (JS OK). **Ikke testet på telefonen endnu** — Matteo skal uploade `index.html` og teste igen efter geninstallation.
+
 ## Opdatering 2026-07-15 (5. runde — nyt app-ikon)
 Matteo har lavet et nyt AI-genereret app-ikon (person der flekser + "BRAH"-taleboble + "Matteos Jernlog-app"-tekst på lilla/blå gradient). Det er beskåret tæt ind (intet tomrum i bunden, ingen kanter/border) og skaleret til 180x180. Matteo har slettet alle gamle ikonfiler på GitHub, så filen er omdøbt fra `icon-180-v4.png` til **`icon-180-v1.png`** for at starte navngivningen forfra — `index.html` linje 11 (`<link rel="apple-touch-icon">`) peger nu på det nye navn.
 
