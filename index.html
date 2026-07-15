@@ -26,21 +26,26 @@
     --radius:14px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;overscroll-behavior-y:none;}
-  body{padding-bottom:calc(80px + env(safe-area-inset-bottom));}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;overflow:hidden;overscroll-behavior-y:none;}
+  /* height:100dvh (dynamisk viewport-højde) forhindrer at mobilbrowserens adresselinje/værktøjslinje
+     som viser/skjuler sig får bundnavigationen til at "hoppe" — falder tilbage til 100% på ældre browsere. */
+  html,body{height:100dvh;}
 
-  /* Bundnavigation */
-  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--bg-elevated);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom);}
+  /* App-skal: header og bundnav er faste, kun <main> scroller. Undgår at bundnavigationen
+     dækker for indhold (fx kommentarfeltet nederst i feedet), og at den flytter sig ved sideskift. */
+  .app{max-width:520px;margin:0 auto;height:100%;height:100dvh;display:flex;flex-direction:column;}
+
+  /* Bundnavigation — almindeligt element nederst i flex-kolonnen, ikke "fixed" */
+  .bottom-nav{flex:0 0 auto;background:var(--bg-elevated);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom);}
   .bn-item{flex:1;background:none;border:none;color:var(--text-dim);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 2px 10px;font-family:inherit;}
   .bn-ic{font-size:20px;line-height:1;}
   .bn-label{font-size:10px;font-weight:700;white-space:nowrap;}
   .bn-item.active{color:var(--yellow);}
   .bn-item:active{background:var(--bg-card);}
   button, input, select{font-family:inherit;}
-  .app{max-width:520px;margin:0 auto;min-height:100%;}
 
   /* Top bar */
-  header.topbar{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top));}
+  header.topbar{flex:0 0 auto;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top));}
   header.topbar .title{font-size:16px;font-weight:800;letter-spacing:0.3px;color:var(--yellow);display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
   header.topbar .title .dot{width:10px;height:10px;border-radius:50%;background:var(--red);}
   .menu-btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);width:44px;height:44px;border-radius:12px;font-size:20px;display:flex;align-items:center;justify-content:center;}
@@ -57,7 +62,7 @@
   .menu-item.active{color:var(--yellow);}
   .menu-item .req-dot{margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;}
 
-  main{padding:16px;}
+  main{padding:16px;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 
   /* Generic */
   .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
@@ -232,6 +237,7 @@
       <div class="menu-item" data-view="comments"><span class="ic">💬</span> Kommentarer <span class="req-dot" id="commentDot" style="display:none;">0</span></div>
       <div class="menu-item" data-view="exercises"><span class="ic">📋</span> Øvelser</div>
       <div class="menu-item" data-view="friends"><span class="ic">👥</span> Venner <span class="req-dot" id="friendReqDot" style="display:none;">0</span></div>
+      <div class="menu-item" data-view="admin" id="menuAdminItem" style="display:none;"><span class="ic">🛡️</span> Godkend brugere <span class="req-dot" id="adminReqDot" style="display:none;">0</span></div>
       <div class="menu-item" id="menuLogout"><span class="ic">🚪</span> Log ud <span class="muted" id="menuUser" style="margin-left:auto;font-size:12px;"></span></div>
     </div>
   </div>
@@ -554,6 +560,7 @@ function render(){
   else if(state.view==="calendar") renderCalendarPage();
   else if(state.view==="comments") renderCommentsPage();
   else if(state.view==="dig") renderDig();
+  else if(state.view==="admin") renderAdminApprovals();
   else if(state.view==="friends") renderFriends();
   else if(state.view==="friendProfile") renderFriendProfile(state.viewUser);
 }
@@ -564,7 +571,7 @@ function goto(view, extra){
   if(extra) Object.assign(state, extra);
   render();
   updateBottomNavActive();
-  window.scrollTo(0,0);
+  main.scrollTop = 0; /* <main> er nu det eneste scrollbare element, ikke vinduet */
 }
 
 /* ---------------- Toast ---------------- */
@@ -656,6 +663,10 @@ function countUnreadComments(allComments){
   }).length;
 }
 
+function isAdminAccount(){
+  return !!(session && session.user && session.user.email && session.user.email.toLowerCase()===MIGRATION_OWNER_EMAIL);
+}
+
 function refreshMenuBadges(){
   if(!session) return;
   sb.from("friendships").select("id").eq("addressee", session.user.id).eq("status","pending").then(function(res){
@@ -670,6 +681,15 @@ function refreshMenuBadges(){
     var n = countUnreadComments(res.data);
     if(n===0){ dot.style.display="none"; return; }
     dot.textContent = n;
+    dot.style.display = "inline-flex";
+  });
+  var adminItem = document.getElementById("menuAdminItem");
+  if(!isAdminAccount()){ adminItem.style.display = "none"; return; }
+  adminItem.style.display = "flex";
+  sb.from("profiles").select("id").eq("approved", false).then(function(res){
+    var dot = document.getElementById("adminReqDot");
+    if(res.error || !res.data || res.data.length===0){ dot.style.display="none"; return; }
+    dot.textContent = res.data.length;
     dot.style.display = "inline-flex";
   });
 }
@@ -772,6 +792,26 @@ function renderLoadingScreen(msg){
   main.innerHTML = '<div class="empty-state" style="padding-top:70px;font-size:15px;">'+escapeHtml(msg||"Henter dine data…")+'</div>';
 }
 
+/* Vises for nye brugere der endnu ikke er godkendt af MASTER MATTEO */
+function renderPendingApproval(){
+  document.getElementById("menuBtn").style.display = "none";
+  document.getElementById("bottomNav").style.display = "none";
+  var html = '<div class="login-wrap">';
+  html += '<div class="login-logo">⏳</div>';
+  html += '<div class="login-title">Venter på godkendelse</div>';
+  html += '<div class="card"><div style="font-size:15px;line-height:1.5;">Venter på at <b>MASTER MATTEO</b> accepterer dig.<br><br>Du får ikke adgang til appen før din konto er godkendt. Prøv "Tjek igen" senere, eller luk appen og åbn den igen.</div></div>';
+  html += '<button class="btn primary" id="pendingRefreshBtn" style="margin-bottom:10px;">Tjek igen</button>';
+  html += '<button class="btn ghost" id="pendingLogoutBtn">Log ud</button>';
+  html += '</div>';
+  main.innerHTML = html;
+  document.getElementById("pendingRefreshBtn").addEventListener("click", function(){ bootAfterLogin(); });
+  document.getElementById("pendingLogoutBtn").addEventListener("click", function(){
+    sb.auth.signOut().catch(function(){});
+    session = null; myProfile = null; memEx = []; memLogs = []; friendCache = null;
+    renderLogin("in");
+  });
+}
+
 /* Sikr at der findes en profil-række (brugernavn + email) for kontoen */
 function ensureProfile(){
   return sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle().then(function(res){
@@ -871,6 +911,12 @@ function bootAfterLogin(){
   document.getElementById("bottomNav").style.display = "flex";
   renderLoadingScreen("Henter dine data…");
   ensureProfile().then(function(){
+    /* Nye brugere er ikke godkendt endnu (approved=false som standard) — bloker
+       adgang til appen indtil MASTER MATTEO har accepteret dem manuelt. */
+    if(myProfile && myProfile.approved===false && !isAdminAccount()){
+      renderPendingApproval();
+      return Promise.reject({__pendingApproval:true});
+    }
     return detectColumns();
   }).then(function(){
     return flushPendingSnapshot();
@@ -888,6 +934,7 @@ function bootAfterLogin(){
        (undgår at skulle navigere derhen igen mellem sæt), ellers Feed. */
     goto(hasRecentOwnActivity() ? "log" : "feed");
   }).catch(function(err){
+    if(err && err.__pendingApproval) return; /* allerede vist ventesiden, ikke en fejl */
     renderLoadingScreen("Kunne ikke hente data — tjek din internetforbindelse og prøv igen.");
     var retry = document.createElement("button");
     retry.className = "btn primary";
@@ -2563,6 +2610,63 @@ function renderFeed(){
 }
 
 /* =========================================================
+   VIEW: ADMIN-GODKENDELSE (kun MASTER MATTEOs konto)
+   ========================================================= */
+function renderAdminApprovals(){
+  state.viewUser = null;
+  if(!isAdminAccount()){
+    main.innerHTML = '<h2 class="section">Godkend brugere</h2><div class="card"><div class="empty-state">Du har ikke adgang til denne side.</div></div>';
+    return;
+  }
+  main.innerHTML = '<h2 class="section" style="margin-top:0;">Godkend brugere</h2><div class="empty-state">Henter…</div>';
+  sb.from("profiles").select("*").eq("approved", false).order("created_at", {ascending:true}).then(function(res){
+    if(res.error) throw res.error;
+    var pending = res.data||[];
+    var html = '<h2 class="section" style="margin-top:0;">Venter på godkendelse</h2>';
+    html += '<div class="muted" style="margin-bottom:16px;">Nye brugere kan ikke bruge appen før du har accepteret dem her.</div>';
+    if(pending.length===0){
+      html += '<div class="card"><div class="empty-state">Ingen ventende ansøgninger.</div></div>';
+    } else {
+      html += '<div class="card" style="padding:0;">';
+      pending.forEach(function(p){
+        html += '<div class="list-row" data-pid="'+p.id+'">';
+        html += '<div><div class="name">'+escapeHtml(p.username||"(intet brugernavn)")+'</div><div class="muted">'+escapeHtml(p.email||"")+'</div></div>';
+        html += '<div style="display:flex;gap:6px;"><button class="btn small primary" data-approve="'+p.id+'">Accepter</button><button class="btn small danger" data-reject="'+p.id+'">Afvis</button></div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    main.innerHTML = html;
+
+    main.querySelectorAll("[data-approve]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        btn.disabled = true;
+        sb.from("profiles").update({approved:true}).eq("id", btn.getAttribute("data-approve")).then(function(res2){
+          if(res2.error){ showToast("Kunne ikke godkende: "+(res2.error.message||"")); btn.disabled=false; return; }
+          showToast("Bruger godkendt ✓");
+          refreshMenuBadges();
+          renderAdminApprovals();
+        });
+      });
+    });
+    main.querySelectorAll("[data-reject]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        if(!confirm("Afvis denne ansøgning? Personen skal i så fald oprette sig igen.")) return;
+        btn.disabled = true;
+        sb.from("profiles").delete().eq("id", btn.getAttribute("data-reject")).then(function(res2){
+          if(res2.error){ showToast("Kunne ikke afvise: "+(res2.error.message||"")); btn.disabled=false; return; }
+          showToast("Ansøgning afvist");
+          refreshMenuBadges();
+          renderAdminApprovals();
+        });
+      });
+    });
+  }).catch(function(err){
+    main.innerHTML = '<h2 class="section">Godkend brugere</h2><div class="card"><div class="empty-state">Kunne ikke hente — tjek din internetforbindelse.</div></div>';
+  });
+}
+
+/* =========================================================
    VIEW: VENNER
    ========================================================= */
 function renderFriends(){
@@ -2806,13 +2910,13 @@ function renderFriendProfile(userId){
       state.friendCalSelectedDay = null;
       state.friendCalMonth = fm===0 ? {y:fy-1, m:11} : {y:fy, m:fm-1};
       draw();
-      window.scrollTo(0,0);
+      main.scrollTop = 0;
     });
     document.getElementById("fcalNext").addEventListener("click", function(){
       state.friendCalSelectedDay = null;
       state.friendCalMonth = fm===11 ? {y:fy+1, m:0} : {y:fy, m:fm+1};
       draw();
-      window.scrollTo(0,0);
+      main.scrollTop = 0;
     });
     main.querySelectorAll("[data-caldate]").forEach(function(cell){
       cell.addEventListener("click", function(){
