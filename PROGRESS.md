@@ -2,6 +2,21 @@
 
 Sidst opdateret: 2026-07-15
 
+## Opdatering 2026-07-15 (9. runde — sort bjælke: STOP med blinde forsøg, kør diagnose)
+Efter 4 mislykkede forsøg er strategien ændret: i stedet for flere CSS-gæt afgøres det nu eksperimentelt HVOR problemet ligger. Der er præcis to teorier tilbage:
+- **Teori A (cache):** Telefonen kører slet ikke den nyeste kode (GitHub Pages CDN / hjemmeskærms-snapshot / service worker hønen-og-ægget). Ville forklare hvorfor INGEN forsøg har ændret noget visuelt — heller ikke farve-matchingen, som umuligt kan være usynlig hvis koden faktisk kørte.
+- **Teori B (WebView-inset):** WebView'en dækker reelt ikke bunden i standalone; det sorte er iOS' eget vindue bag web-indholdet, og kan pr. definition ikke males med CSS.
+
+**Nyt i denne runde:**
+1. `bundtest.html` — minimal, isoleret testside (rød fuldskærm + grøn safe-area-stribe + blå "falsk bundnav" + live-tal på skærmen: klokkeslæt for indlæsning, standalone ja/nej, env(safe-area-inset-bottom) i px, innerHeight osv.). Skal uploades til repoet, åbnes i Safari OG som hjemmeskærm-app, og skærmbilledes.
+2. Versions-markør i `index.html`: nederst i dropdown-menuen (☰) står nu "version 15.7-B". Hvis appen på telefonen IKKE viser den tekst efter upload+genstart, er Teori A bevist.
+
+**Fortolkning af bundtest (som hjemmeskærm-app):**
+- Rød når helt ned + grøn stribe ca. 34px synlig → WebView'en KAN dække bunden → Teori B død → fejlen er app-specifik/cache → fix i appen.
+- Sort bjælke under rød/blå + env-tal = 0 → Teori B bevist → CSS kan ikke løse det; næste skridt er meta/manifest-varianter (fx uden manifest.json, anden statusbar-style) testet én ad gangen på testsiden — eller acceptér og design bundnav'en så den ser bevidst ud.
+
+**Upload:** `bundtest.html` + `index.html` (versions-markør). Testsiden kræver sin egen "Føj til hjemmeskærm" (ikonet hedder "Bundtest").
+
 ## Opdatering 2026-07-15 (8. runde — sort bjælke under bundnav, forsøg 3: rigtig manifest.json)
 Matteo sammenlignede med Strava-appen og pressede på — med rette, for Strava beviser at det GODT kan lade sig gøre at få bundnav'en helt ned uden sort bjælke. Fandt en sandsynlig hovedårsag: appen har KUN de gamle "apple-mobile-web-app-*" meta-tags, men ingen rigtig **Web App Manifest** (`manifest.json`) — det er den moderne standard som nyere iOS-versioner håndterer markant bedre, bl.a. i forhold til safe-area/viewport i hjemmeskærm-tilstand.
 
