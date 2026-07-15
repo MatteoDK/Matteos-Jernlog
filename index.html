@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Master Matteos Jernlog">
 <meta name="theme-color" content="#101012">
 <link rel="apple-touch-icon" href="icon-180-v1.png">
@@ -27,13 +27,14 @@
     --radius:14px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  /* html/body-baggrunden er bevidst sat til --bg-elevated (samme farve som bundnav'en), IKKE --bg.
-     Grunden: på iPhones i hjemmeskærm-tilstand kan env(safe-area-inset-bottom) i visse tilfælde ikke
-     give ekstra plads korrekt inde i et position:fixed-element, så der kan opstå en lille kant nederst
-     hvor man ser html/body's baggrund i stedet for bundnav'ens. Ved at gøre den farve identisk med
-     bundnav'ens baggrund, er kanten usynlig uanset om safe-area-beregningen rammer helt præcist.
-     <main> og header får deres egen eksplicitte --bg-farve nedenfor, så resten af appen ser ud som før. */
-  html,body{margin:0;padding:0;background:var(--bg-elevated);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;height:-webkit-fill-available;overflow:hidden;overscroll-behavior-y:none;}
+  /* LØSNING PÅ DEN SORTE BUNDBJÆLKE (fundet via bundtest.html/bundtest2.html, 15/7-2026):
+     Årsagen var en WebKit-fejl i standalone-tilstand med statusbar-stilen "black-translucent":
+     layout-vinduet blev gjort 59pt for kort (statusbar-højden) men tegnet fra skærmens top, så
+     de 59pt manglede i BUNDEN — udenfor rækkevidde af al CSS. Fixet er statusbar-stil "black"
+     i <head> (kræver at hjemmeskærms-genvejen slettes og tilføjes igen for at træde i kraft).
+     html/body-baggrunden er sat til --bg (samme som header), så et evt. statusbar-underlap i
+     toppen matcher headeren. Bunden ligger nu INDE i vinduet og males af bundnav'en selv. */
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;height:-webkit-fill-available;overflow:hidden;overscroll-behavior-y:none;}
 
   /* App-skal: header og bundnav er faste, kun <main> scroller. position:fixed + inset:0 (i stedet for
      height:100dvh) sikrer at app'en altid dækker HELE skærmen præcist, også på iPhones tilføjet til
@@ -251,7 +252,7 @@
       <div class="menu-item" data-view="friends"><span class="ic">👥</span> Venner <span class="req-dot" id="friendReqDot" style="display:none;">0</span></div>
       <div class="menu-item" data-view="admin" id="menuAdminItem" style="display:none;"><span class="ic">🛡️</span> Godkend brugere <span class="req-dot" id="adminReqDot" style="display:none;">0</span></div>
       <div class="menu-item" id="menuLogout"><span class="ic">🚪</span> Log ud <span class="muted" id="menuUser" style="margin-left:auto;font-size:12px;"></span></div>
-      <div style="padding:8px 18px;font-size:11px;color:var(--text-dim);text-align:right;">version 15.7-B</div>
+      <div style="padding:8px 18px;font-size:11px;color:var(--text-dim);text-align:right;">version 15.7-C</div>
     </div>
   </div>
 

@@ -2,7 +2,20 @@
 
 Sidst opdateret: 2026-07-15
 
-## Opdatering 2026-07-15 (9. runde — sort bjælke: STOP med blinde forsøg, kør diagnose)
+## Opdatering 2026-07-15 (11. runde — SORT BJÆLKE LØST, fix lagt ind i appen)
+`bundtest2.html` (statusbar-stil `black` i stedet for `black-translucent`) beviste løsningen på telefonen: grøn safe-area-stribe helt nede ved skærmkanten, ingen bjælke, toppen stadig pæn. Fixet er nu overført til appen:
+- `index.html`: `apple-mobile-web-app-status-bar-style` ændret til `black`; html/body-baggrund tilbage til `--bg` (matcher header ved evt. statusbar-underlap i toppen); forklarende kommentar opdateret; version hævet til **15.7-C**.
+- **VIGTIGT ved udrulning:** statusbar-stilen læses KUN ved installation → alle (Matteo, Thor, mrbuuuzzz) skal **slette hjemmeskærms-genvejen og tilføje appen igen én gang** efter upload. Ellers ingen effekt.
+- Verifikation: menu (☰) skal vise "version 15.7-C", og bundnav'en skal gå helt ned uden bjælke.
+- Oprydning senere (valgfrit): `bundtest.html`/`bundtest2.html` kan slettes fra repoet når alt er bekræftet.
+
+## Opdatering 2026-07-15 (10. runde — GENNEMBRUD: årsagen er fundet og opmålt)
+Diagnosen fra runde 9 gav svar:
+- Versions-markøren ("version 15.7-B") VISES på telefonen → cache-teorien (Teori A) er død; telefonen kører nyeste kode.
+- `bundtest.html` som hjemmeskærm-app viste: env(safe-area-inset-bottom)=34 ✓, MEN `window.innerHeight`=793 mod `screen.height`=852 → **layout-vinduet er præcis 59pt for kort (= statusbar/Dynamic Island-højden)**. Indholdet forankres i toppen (rød gik op under statusbaren), så de 59pt mangler i BUNDEN. Området under web-vinduet males af sidens "canvas" (html-baggrund — hvid på testsiden).
+- Konklusion: kendt WebKit-fejl i nyere iOS: standalone + `apple-mobile-web-app-status-bar-style=black-translucent` → viewport bliver screen−statusbar, men tegnes fra skærmens top. INGEN CSS kan løse det — det er selve vinduet der slutter for tidligt.
+
+**Løsningskandidat (testes isoleret):** `bundtest2.html` — identisk testside, men med statusbar-stil `black` (ikke-overlay). Forventning: web-vinduet placeres under statusbaren og når helt til bunds. Hvis det virker: skift appens meta til `black` (env(top) bliver så 0 → headerens padding-top falder automatisk tilbage til 14px; statusbar-området bliver sort, hvilket matcher appens næsten-sorte tema).
 Efter 4 mislykkede forsøg er strategien ændret: i stedet for flere CSS-gæt afgøres det nu eksperimentelt HVOR problemet ligger. Der er præcis to teorier tilbage:
 - **Teori A (cache):** Telefonen kører slet ikke den nyeste kode (GitHub Pages CDN / hjemmeskærms-snapshot / service worker hønen-og-ægget). Ville forklare hvorfor INGEN forsøg har ændret noget visuelt — heller ikke farve-matchingen, som umuligt kan være usynlig hvis koden faktisk kørte.
 - **Teori B (WebView-inset):** WebView'en dækker reelt ikke bunden i standalone; det sorte er iOS' eget vindue bag web-indholdet, og kan pr. definition ikke males med CSS.
