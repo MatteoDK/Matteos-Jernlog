@@ -2,6 +2,11 @@
 
 Sidst opdateret: 2026-07-15
 
+## Opdatering 2026-07-15 (5. runde — nyt app-ikon)
+Matteo har lavet et nyt AI-genereret app-ikon (person der flekser + "BRAH"-taleboble + "Matteos Jernlog-app"-tekst på lilla/blå gradient). Det er beskåret tæt ind (intet tomrum i bunden, ingen kanter/border) og skaleret til 180x180. Matteo har slettet alle gamle ikonfiler på GitHub, så filen er omdøbt fra `icon-180-v4.png` til **`icon-180-v1.png`** for at starte navngivningen forfra — `index.html` linje 11 (`<link rel="apple-touch-icon">`) peger nu på det nye navn.
+
+**Mangler at blive uploadet til GitHub:** `index.html` og `icon-180-v1.png`. `sw.js` er IKKE ændret i denne runde og skal ikke uploades igen (den skal kun genuploades hvis dens eget indhold ændres).
+
 ## Opdatering 2026-07-15 (4. runde — testet på telefonen, mindre rettelser)
 Matteo har nu uploadet koden til GitHub og testet på sin iPhone (som PWA/hjemmeskærm-app). Bundnavigationen virker og hopper ikke, feed-kommentarer er synlige — men en lille sort stribe var synlig nederst under bundnavigationen (dvh-højde ramte ikke helt bunden af skærmen på hjemmeskærm-installerede iPhone-apps). Rettet ved at ændre `.app` fra `height:100dvh` til `position:fixed;inset:0;` — mere robust løsning specifikt til dette iOS-scenarie. Titlen øverst er også ændret fra "Master Matteos Jernlog" til "Master Matteos Jernlog-app". **Bekræftet på GitHub at begge rettelser er uploadet korrekt** (tjekket direkte via raw-fil), men Matteo skulle slette+geninstallere hjemmeskærm-genvejen for at telefonens cache ikke viste den gamle version. Ikke bekræftet visuelt på telefonen efter denne rettelse endnu.
 
