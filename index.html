@@ -1026,7 +1026,7 @@ function renderLog(){
   html += '<h2 class="section">Log øvelse</h2>';
   html += '<div class="card">';
   html += '<div class="search-wrap">';
-  html += '<input type="text" id="exSearch" placeholder="Søg efter øvelse..." autocomplete="off">';
+  html += '<input type="text" id="exSearch" placeholder="Søg på øvelse eller muskelgruppe..." autocomplete="off">';
   html += '<div id="searchResults"></div>';
   html += '</div>';
   html += '</div>';
@@ -1070,11 +1070,28 @@ function renderLog(){
   function doSearch(){
     var q = searchInput.value.trim().toLowerCase();
     var list = loadEx();
-    var filtered = q ? list.filter(function(e){return e.name.toLowerCase().indexOf(q)!==-1;}) : [];
+    /* Hvis søgeteksten matcher starten af en muskelgruppes danske navn (fx
+       "ryg", "bryst", "ben"), vis ALLE øvelser for den muskelgruppe i stedet
+       for at søge i øvelsesnavne — så man hurtigt kan se hele listen for en
+       muskelgruppe uden at kende navnet på en bestemt øvelse. */
+    var matchedMuscle = null;
+    if(q){
+      Object.keys(MUSCLE_LABELS).some(function(mk){
+        if(MUSCLE_LABELS[mk].toLowerCase().indexOf(q)===0){ matchedMuscle = mk; return true; }
+        return false;
+      });
+    }
+    var filtered;
+    if(matchedMuscle){
+      filtered = list.filter(function(e){ return e.muscle === matchedMuscle; });
+    } else {
+      filtered = q ? list.filter(function(e){return e.name.toLowerCase().indexOf(q)!==-1;}) : [];
+    }
     var out = "";
     if(q.length>0){
       out += '<div class="search-results">';
-      filtered.slice(0,8).forEach(function(e){
+      var showLimit = matchedMuscle ? filtered.length : 8;
+      filtered.slice(0,showLimit).forEach(function(e){
         out += '<div class="search-result-item" data-id="'+e.id+'"><span>'+escapeHtml(e.name)+'</span>'+(e.bodyweight?'<span class="bw-tag">Kropsvægt</span>':'')+'</div>';
       });
       out += '<div class="add-new-row" id="addNewExRow">＋ Tilføj "'+escapeHtml(searchInput.value.trim())+'" som ny øvelse</div>';
