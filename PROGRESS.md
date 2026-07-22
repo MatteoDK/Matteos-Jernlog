@@ -2,6 +2,15 @@
 
 Sidst opdateret: 2026-07-22
 
+## Opdatering 2026-07-22 (19. runde — "Dig"-siden viser kun 2 seneste træninger + "Se tidligere")
+Matteo ville ikke skulle scrolle forbi alle sine træninger for at nå frem til "Størst fremgang"/"Mindst fremgang"-statistikkerne nederst på "Dig"-siden, hvis man har mange loggede træninger.
+
+**Rettelse:** "Dig"-siden viser nu kun de 2 seneste træningskort som udgangspunkt. Lige under det andet kort er der en knap "Se tidligere" — trykker man på den, udvides listen til at vise alle (op til den eksisterende grænse på 15 nyeste). Ny state `state.digShowAll` styrer dette (samme mønster som det eksisterende `digExpanded` for enkelt-kort). Kommentar-indlæsningen (`loadDigComments`) er rettet til kun at hente kommentarer til de faktisk viste kort, så indekseringen matcher korrekt både før og efter udvidelse.
+
+Testet med jsdom (4 træningsdage langt fra hinanden i tid): kun 2 kort vises i starten, "Se tidligere"-knappen findes, klik udvider til alle 4 kort og knappen forsvinder, kommentarfelter findes korrekt for alle 4 kort efter udvidelse. Ingen JS-fejl. Selve "Størst fremgang"/"Mindst fremgang"-beregningen er upåvirket (den bruger al log-data uafhængigt af hvor mange kort der vises).
+
+**Skal uploades til GitHub:** kun `index.html`.
+
 ## Opdatering 2026-07-22 (18. runde — Program 1/2-navne, nulstilling af andres lister, swipe-fjern, brugerstyrede grupperinger)
 Matteo bad om fire ting i denne runde:
 

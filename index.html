@@ -632,7 +632,7 @@ function trendArrow(t){
 }
 
 /* ---------------- Router / state ---------------- */
-var state = { view:"log", selectedExerciseId:null, viewUser:null, histBack:"history", calMonth:null, friendCalMonth:null, calSelectedDay:null, feedExpanded:{}, feedFocus:null, digExpanded:{}, exercisesTab:0 };
+var state = { view:"log", selectedExerciseId:null, viewUser:null, histBack:"history", calMonth:null, friendCalMonth:null, calSelectedDay:null, feedExpanded:{}, feedFocus:null, digExpanded:{}, exercisesTab:0, digShowAll:false };
 var main = document.getElementById("main");
 
 function render(){
@@ -2580,10 +2580,12 @@ function renderDig(){
   var html = '<h2 class="section" style="margin-top:0;">Dig</h2>';
 
   html += '<h2 class="section" style="margin-top:0;">Seneste aktiviteter</h2>';
+  var visibleCount = state.digShowAll ? workouts.length : Math.min(2, workouts.length);
+  var visibleWorkouts = workouts.slice(0, visibleCount);
   if(workouts.length===0){
     html += '<div class="card"><div class="empty-state">Ingen træninger endnu. Log din første øvelse! 🏋️</div></div>';
   } else {
-    workouts.forEach(function(w, wi){
+    visibleWorkouts.forEach(function(w, wi){
       var isLive = (Date.now() - w.end) < WORKOUT_GAP_MS;
       var anyPR = w.exercises.some(function(x){ return x.isPR; });
       var muscles = [];
@@ -2630,6 +2632,9 @@ function renderDig(){
       html += '</div>';
       html += '</div>'; /* /kort */
     });
+    if(!state.digShowAll && workouts.length > visibleCount){
+      html += '<button class="btn" id="digShowMoreBtn" style="margin-bottom:16px;">Se tidligere</button>';
+    }
   }
 
   var ranking = computeProgressRanking();
@@ -2653,7 +2658,15 @@ function renderDig(){
   }
 
   main.innerHTML = html;
-  loadDigComments(workouts, me);
+  loadDigComments(visibleWorkouts, me);
+
+  var showMoreBtn = document.getElementById("digShowMoreBtn");
+  if(showMoreBtn){
+    bindTapAction(showMoreBtn, function(){
+      state.digShowAll = true;
+      renderDig();
+    });
+  }
 
   main.querySelectorAll(".feed-card[data-dkey]").forEach(function(card){
     card.addEventListener("click", function(e){
