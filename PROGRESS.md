@@ -1,6 +1,95 @@
 # Matteos Jernlog — status
 
-Sidst opdateret: 2026-07-15
+Sidst opdateret: 2026-07-22
+
+## Opdatering 2026-07-22 (18. runde — Program 1/2-navne, nulstilling af andres lister, swipe-fjern, brugerstyrede grupperinger)
+Matteo bad om fire ting i denne runde:
+
+**1. Omdøbning: "Liste A/B/C" → "Program 1"/"Program 2"/"Øvrige øvelser" (FÆRDIG)**
+Alle brugervendte tekster er ændret: toggle ved oprettelse/omdøbning af øvelser, overskrifter på Øvelser/Mit program-siden, "Rediger liste"-modalens titel/tekst/toast. De interne kode-værdier for variant ("a"/"b"/null) er IKKE ændret — kun det brugeren ser er nyt. Kun kommentarer i koden (ikke synlige for brugeren) nævner stadig de gamle navne enkelte steder.
+
+**2. Nulstilling af alle andre brugeres programmer (FÆRDIG, kørt direkte i Supabase)**
+Kørt en engangs-SQL der sætter `variant = null` for alle `exercises`-rækker hvor brugeren IKKE er Matteo. Verificeret bagefter: alle 8 andre brugere har nu 0 øvelser med et program (alt ligger i Øvrige øvelser), mens Matteos egen konto er urørt (50 øvelser med program, som før). De andre brugere kan nu selv bygge deres Program 1/2 fra bunden.
+
+**3. Swipe-venstre for at fjerne en øvelse fra Program 1/2 (FÆRDIG, testet)**
+Ny gestus på Øvelser/Mit program-siden: swiper man en øvelse i Program 1 eller Program 2 til venstre (mindst ca. 90px), ryger den ned i Øvrige øvelser (variant-bogstavet fjernes). Kun aktiv i Program 1/2 — ikke i Øvrige øvelser, da der ikke er noget "længere ned" at flytte til der. Den eksisterende lang-tryk-og-træk-rækkefølge-gestus er bevaret uændret og fungerer stadig i alle tre lister (kodemæssigt er lodret træk og vandret swipe nu to grene af samme trykhåndtering, så de ikke kan forveksle hinanden — testet med jsdom: swipe fjerner korrekt, efterfølgende lodret træk virker stadig uden fejl).
+
+**4. Mulighed for at ændre muskelgruppe-grupperinger (FÆRDIG, testet)**
+Ny knap "Rediger grupperinger" øverst på Øvelser/Mit program-siden. Her kan man for hver af de 9 muskelgrupper vælge hvilken af de 3 faner den skal ligge under (fx flytte Tricep over til Bryst-gruppen). Gemmes kun på ens egen konto (ny kolonne `profiles.group_layout`, en jsonb med 3 lister af muskelgruppe-navne) og påvirker ingen andre brugere. Så længe man ikke selv har ændret noget, ser man præcis samme Ryg/Bryst/Ben-opdeling som altid. Har man lavet sin egen gruppering, hedder fanerne i stedet "Gruppe 1/2/3" (da de faste navne "Ryg"/"Bryst"/"Ben" ikke nødvendigvis passer længere), og der er en "Nulstil til standard"-knap. "Foreslået i dag"-funktionen (som foreslår øvelser ud fra hvad man har logget i dag) bruger nu automatisk ens egen gruppering i stedet for den faste standard. Testet med jsdom: standard-visning uændret, tilpasning gemmes og bruges korrekt, nulstilling virker.
+
+**Database-migration kørt:** `alter table profiles add column if not exists group_layout jsonb;` — additiv, ingen eksisterende data påvirket.
+
+**Skal uploades til GitHub:** kun `index.html`. De to database-ændringer (nulstilling af andres programmer + ny kolonne) er allerede kørt direkte i Supabase.
+
+## Opdatering 2026-07-22 (17. runde — 3 ændringer: faner i Øvelser, rækkefølge-bug, delt øvelseskatalog)
+Matteo bad om tre ting i én omgang:
+
+**1. "Øvelser" → "Øvelser/Mit program" + 3 faner (FÆRDIG, testet)**
+Menupunktet i dropdown-menuen hedder nu "Øvelser/Mit program". Siden har fået 3 faner øverst (Ryg / Bryst / Ben) så man med det samme kan hoppe til den ønskede muskelgruppe uden at scrolle forbi de andre. Fanerne styres af nyt state-felt `exercisesTab`. "Ikke kategoriseret"-sektionen vises fortsat altid øverst, uanset hvilken fane der er valgt. Testet med jsdom: korrekt menutekst, korrekte fane-labels, fane-skift viser rette øvelser (Ryg viser ikke Ben-øvelser og omvendt). Ingen JS-fejl.
+
+**2. Rækkefølge blev nogle gange byttet om i Ben-programmet (FÆRDIG, root cause fundet og rettet)**
+Matteos svar på opklarende spørgsmål ("mest nye/nyligt flyttede" + "sker også uden at lukke appen") pegede væk fra netværks-timing og hen på en ren kode-fejl. Fundet: `openEditExerciseModal` (bruges både til at omdøbe en øvelse OG til at kategorisere "Ikke kategoriseret"-øvelser) genopbyggede øvelsesobjektet fra bunden ved gem, og glemte at kopiere `position`-feltet med — så `position` blev nulstillet (slettet) hver gang man omdøbte/kategoriserede en øvelse. Det ramte netop "nye/nyligt flyttede" øvelser, fordi det er dem der oftest går igennem den dialog. Rettet med `Object.assign({}, e, {...})` så alle eksisterende felter bevares. `openAddExerciseModal` fik desuden tilføjet en rigtig startposition ved oprettelse (manglede før). Testet med jsdom: position uændret (1) før og efter simuleret omdøbning.
+
+**3. Del Matteos øvelseskatalog med alle brugere (Liste C) — DELVIST FÆRDIG**
+Mål: alle andre nuværende brugere OG alle fremtidige nye brugere skal have Matteos fulde liste af 60 øvelser liggende i Liste C under deres muskelgruppe, så de selv kan bygge deres Liste A/B.
+
+- **Fremtidige brugere (FÆRDIG):** `STARTER_CATALOG`-arrayet i `index.html` er erstattet med Matteos komplette 60-øvelses-liste (hentet direkte fra `exercises`-tabellen i Supabase via SQL). Alle `variant`-felter er sat til `null`, så nye brugere får det hele i Liste C i stedet for allerede sorteret i A/B. Verificeret: 60 unikke id'er, ingen dubletter, gyldig JS-syntaks (`node --check`).
+- **Nuværende brugere (FÆRDIG):** Engangs-SQL'en herunder er kørt direkte i Supabase SQL Editor. Bemærk: `ON CONFLICT (id)` fejlede først (42P10 — exercises' rigtige primærnøgle er `(user_id, id)`, ikke bare `id`), rettet til `ON CONFLICT (user_id, id)`, hvorefter den kørte igennem uden fejl. Verificeret bagefter: alle 8 andre brugere er gået fra deres tidligere antal til 66 øvelser hver (Matteos 60 minus dem de allerede havde med samme navn, plus deres egne oprindelige øvelser). Alle nye øvelser er sat med `variant: null`, så de ligger i Liste C og skal ikke ændre noget i deres eksisterende Liste A/B.
+
+```sql
+with mine as (
+  select id from profiles where email = 'matteoverdiani.dk@gmail.com'
+),
+my_exercises as (
+  select e.id, e.name, e.bodyweight, e.muscle
+  from exercises e
+  where e.user_id = (select id from mine)
+),
+target_users as (
+  select id as user_id from profiles where id <> (select id from mine)
+)
+insert into exercises (user_id, id, name, bodyweight, muscle, variant, position)
+select
+  tu.user_id,
+  me.id || '__' || substr(tu.user_id::text, 1, 8),
+  me.name,
+  me.bodyweight,
+  me.muscle,
+  null,
+  null
+from target_users tu
+cross join my_exercises me
+where not exists (
+  select 1 from exercises e2
+  where e2.user_id = tu.user_id
+    and lower(e2.name) = lower(me.name)
+)
+on conflict (id) do nothing;
+```
+
+Denne SQL indsætter kun øvelser brugeren IKKE allerede har (matchet på navn, uanset store/små bogstaver) — ingen dubletter, ingen overskrivning af eksisterende data. `variant` og `position` sættes til `null`, så de lander i Liste C.
+
+**Skal uploades til GitHub:** kun `index.html` (den opdaterede `STARTER_CATALOG`, samt de to andre rettelser fra denne runde). Database-delen (backfill til eksisterende brugere) er allerede kørt direkte i Supabase, så det kræver ikke noget upload.
+
+**Alle tre punkter fra Matteos ønskeliste denne runde er nu færdige og testede.**
+
+## Opdatering 2026-07-15 (16. runde — 404 efter email-verificering, undersøgt)
+Matteo spurgte om punkt 1 (404 efter email-bekræftelse) er løst. Tjekkede Supabases Auth → URL Configuration direkte via browser-styring:
+- **Site URL:** `https://matteodk.github.io/Matteos-Jernlog/` — bekræftet at denne rent faktisk virker (hentet direkte, viser den kørende app, version 15.7-C, ingen 404).
+- **Redirect URLs:** tom liste — sandsynligvis ikke problemet, appen falder bare tilbage til Site URL.
+
+Kan ikke finde noget forkert i selve konfigurationen lige nu. Punktet er stadig markeret som "ikke bekræftet løst" i vores interne opgaveliste, indtil Matteo laver en rigtig test (opret testkonto, bekræft via mail, se om 404 stadig sker). Ingen kodeændringer denne runde.
+
+## Opdatering 2026-07-15 (15. runde — søg på muskelgruppe i Log øvelse)
+Matteo ønskede at man i søgefeltet under "Log øvelse" kan skrive en muskelgruppes navn (fx "bryst", "ryg", "ben") og få vist ALLE øvelser for den gruppe, ikke kun søgning på selve øvelsesnavnet.
+
+**Rettelse:** `doSearch()` i `renderLog()` tjekker nu først om søgeteksten matcher starten af en muskelgruppes danske navn (fra `MUSCLE_LABELS`). Hvis den gør, vises alle øvelser for den muskelgruppe (uden den normale 8-styks-grænse). Ellers søges som før i øvelsesnavne (stadig maks. 8 resultater).
+
+Testet med jsdom: søgning på "bryst" viser korrekt alle bryst-øvelser, almindelig navnesøgning (fx "squ" → Squat) er uændret. Ingen JS-fejl.
+
+**Skal uploades til GitHub:** kun `index.html`.
+
+⚠️ **Bemærk:** Matteo har omdøbt sin lokale mappe fra "CLAUDE" til "Matteos CLAUDE" — stien er nu `Matteos CLAUDE/Jernlog App/` i stedet for `CLAUDE/Jernlog App/`. Husk dette hvis en fremtidig chat leder efter filerne og ikke kan finde den gamle sti.
 
 ## Opdatering 2026-07-15 (14. runde — "Fjern adgang" fejlede, database-rettelse kørt)
 Matteo kunne ikke fjerne Thors adgang — fik fejlen "permission denied for table users". Årsag: sikkerhedsreglerne (`profiles_admin_update`, `profiles_admin_delete`) og triggeren `prevent_self_approve()` fra den oprindelige migration tjekkede admin-status ved at slå direkte op i Supabases interne `auth.users`-tabel — men almindelige indloggede brugere (også Matteos egen konto, når den bruges via appen) har ikke lov til at læse den tabel direkte. Sandsynligvis har denne fejl ligget der siden starten; tidligere godkendelser blev kørt direkte i SQL Editor (som ikke har denne begrænsning), så det er først nu, med Thor, at "Godkend/Fjern adgang"-knapperne reelt er blevet testet i selve appen.

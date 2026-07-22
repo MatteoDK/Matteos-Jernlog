@@ -203,6 +203,11 @@
   .pill-btn.ghost{background:transparent;color:var(--red);border:1px solid var(--red);}
   .pill-btn.dim{background:var(--bg-elevated);color:var(--text-dim);border:1px solid var(--border);}
 
+  /* Faner øverst på Øvelser/Mit program-siden (Ryg/Bryst/Ben) */
+  .ex-tabs{display:flex;gap:8px;margin-bottom:6px;}
+  .ex-tab{flex:1;background:var(--bg-elevated);color:var(--text-dim);border:1px solid var(--border);border-radius:10px;font-weight:800;font-size:14px;padding:10px 6px;}
+  .ex-tab.active{background:var(--yellow);color:#141400;border-color:var(--yellow);}
+
   /* Kalender */
   .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
   .cal-title{font-weight:800;font-size:16px;}
@@ -237,6 +242,11 @@
   /* Træk-og-slip rækkefølge på Øvelser-siden */
   .reorder-list .list-row{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
   .list-row.dragging{opacity:0.75;background:var(--bg-elevated);outline:2px solid var(--yellow);border-radius:10px;position:relative;z-index:10;}
+
+  /* Swipe-venstre for at fjerne en øvelse fra Program 1/2 (ryger ned i Øvrige øvelser) */
+  .swipe-wrap{position:relative;overflow:hidden;}
+  .swipe-wrap .swipe-bg{position:absolute;inset:0;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:flex-end;padding-right:20px;font-weight:800;font-size:14px;z-index:1;}
+  .swipe-wrap .list-row{position:relative;z-index:2;background:var(--bg-card);}
 </style>
 </head>
 <body>
@@ -249,7 +259,7 @@
   <div class="menu-overlay" id="menuOverlay">
     <div class="menu-panel">
       <div class="menu-item" data-view="comments"><span class="ic">💬</span> Kommentarer <span class="req-dot" id="commentDot" style="display:none;">0</span></div>
-      <div class="menu-item" data-view="exercises"><span class="ic">📋</span> Øvelser</div>
+      <div class="menu-item" data-view="exercises"><span class="ic">📋</span> Øvelser/Mit program</div>
       <div class="menu-item" data-view="friends"><span class="ic">👥</span> Venner <span class="req-dot" id="friendReqDot" style="display:none;">0</span></div>
       <div class="menu-item" data-view="admin" id="menuAdminItem" style="display:none;"><span class="ic">🛡️</span> Godkend brugere <span class="req-dot" id="adminReqDot" style="display:none;">0</span></div>
       <div class="menu-item" id="menuLogout"><span class="ic">🚪</span> Log ud <span class="muted" id="menuUser" style="margin-left:auto;font-size:12px;"></span></div>
@@ -321,7 +331,44 @@ var MUSCLE_GROUPS_BY_DAY = [
   {day:3, title:"Bryst, Skulder & Biceps", muscles:["bryst","sideskulder","forskulder","biceps"]},
   {day:2, title:"Ben & Mave", muscles:["ben","mave"]}
 ];
-function dayGroupForMuscle(muscle){ return MUSCLE_DAY[muscle] || null; }
+/* Fast rækkefølge til indstillings-modalen for grupperinger (alle 9 muskelgrupper, én gang hver) */
+var MUSCLE_ORDER = ["ryg","bagskulder","tricep","bryst","sideskulder","forskulder","biceps","ben","mave"];
+
+/* Slår 3 muskel-lister sammen til en pæn titel, fx "Bryst, Skulder & Triceps" — bruges kun
+   når brugeren selv har lavet en tilpasset gruppering (ellers bruges de håndskrevne titler ovenfor). */
+function joinMuscleTitles(muscles){
+  var labels = muscles.map(function(m){ return MUSCLE_LABELS[m]||m; });
+  if(labels.length===0) return "Ingen muskelgrupper valgt";
+  if(labels.length===1) return labels[0];
+  return labels.slice(0,-1).join(", ") + " & " + labels[labels.length-1];
+}
+
+/* Brugerens egen gruppering (profiles.group_layout: array af 3 arrays med muskel-nøgler) —
+   falder tilbage til standard-grupperingen hvis intet er sat, eller hvis dataen skulle vise
+   sig ugyldig (forkert antal grupper, manglende/dobbelte muskelgrupper osv). */
+function getEffectiveGroups(){
+  var layout = myProfile && myProfile.group_layout;
+  if(!Array.isArray(layout) || layout.length!==3 || !layout.every(function(a){ return Array.isArray(a); })){
+    return MUSCLE_GROUPS_BY_DAY;
+  }
+  var known = Object.keys(MUSCLE_LABELS);
+  var flat = [].concat(layout[0], layout[1], layout[2]);
+  var validCoverage = flat.length===known.length && known.every(function(m){ return flat.indexOf(m)!==-1; })
+    && flat.every(function(m,i){ return flat.indexOf(m)===i; });
+  if(!validCoverage) return MUSCLE_GROUPS_BY_DAY;
+  return layout.map(function(arr, i){
+    return { day: i+1, title: joinMuscleTitles(arr), muscles: arr, custom: true };
+  });
+}
+function isDefaultGroupLayout(){ return getEffectiveGroups()===MUSCLE_GROUPS_BY_DAY; }
+
+function dayGroupForMuscle(muscle){
+  var groups = getEffectiveGroups();
+  for(var i=0;i<groups.length;i++){
+    if(groups[i].muscles.indexOf(muscle)!==-1) return i+1;
+  }
+  return null;
+}
 
 function uid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,9); }
 function todayISO(){ var d=new Date(); return d.toISOString().slice(0,10); }
@@ -585,7 +632,7 @@ function trendArrow(t){
 }
 
 /* ---------------- Router / state ---------------- */
-var state = { view:"log", selectedExerciseId:null, viewUser:null, histBack:"history", calMonth:null, friendCalMonth:null, calSelectedDay:null, feedExpanded:{}, feedFocus:null, digExpanded:{} };
+var state = { view:"log", selectedExerciseId:null, viewUser:null, histBack:"history", calMonth:null, friendCalMonth:null, calSelectedDay:null, feedExpanded:{}, feedFocus:null, digExpanded:{}, exercisesTab:0 };
 var main = document.getElementById("main");
 
 function render(){
@@ -1128,7 +1175,7 @@ function renderLog(){
 function muscleSelectHtml(selectedMuscle, selectId){
   var html = '<select id="'+(selectId||"newExMuscle")+'" style="width:100%;padding:12px;border-radius:10px;background:var(--card2,#1c1c1f);color:var(--text);border:1px solid var(--border);font-size:15px;">';
   html += '<option value="">Vælg muskelgruppe…</option>';
-  MUSCLE_GROUPS_BY_DAY.forEach(function(grp){
+  getEffectiveGroups().forEach(function(grp){
     html += '<optgroup label="'+escapeHtml(grp.title)+'">';
     grp.muscles.forEach(function(m){
       html += '<option value="'+m+'"'+(m===selectedMuscle?' selected':'')+'>'+MUSCLE_LABELS[m]+'</option>';
@@ -1140,9 +1187,9 @@ function muscleSelectHtml(selectedMuscle, selectId){
 }
 
 function variantToggleHtml(toggleId, selected){
-  var html = '<div class="field"><label class="field-label">Liste på Øvelser-siden (intet valg = Liste C)</label>';
+  var html = '<div class="field"><label class="field-label">Program på Øvelser-siden (intet valg = Øvrige øvelser)</label>';
   html += '<div class="toggle-group" id="'+toggleId+'">';
-  [["a","Liste A"],["b","Liste B"],["ab","Begge"]].forEach(function(p){
+  [["a","Program 1"],["b","Program 2"],["ab","Begge"]].forEach(function(p){
     html += '<div class="toggle-opt'+(selected===p[0]?' selected':'')+'" data-var="'+p[0]+'">'+p[1]+'</div>';
   });
   html += '</div></div>';
@@ -1197,7 +1244,12 @@ function openAddExerciseModal(prefillName){
     var id = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") || uid("ex");
     var uniqueId = id, n=2;
     while(list.some(function(e){return e.id===uniqueId;})){ uniqueId = id+"-"+n; n++; }
-    list.push({id:uniqueId, name:name, bodyweight: bwVal===1, muscle: muscle, variant: variantVal});
+    /* Ny øvelse får en eksplicit position (i stedet for ingen/undefined), så den
+       placeres sidst i sin liste med det samme, i stedet for at havne i en
+       "ingen position endnu"-bunke der bliver sorteret efter muskel+navn og kan
+       se ud til at "hoppe rundt" i forhold til allerede-placerede øvelser. */
+    var maxPos = list.reduce(function(m,e){ return (typeof e.position==="number" && e.position>m) ? e.position : m; }, 0);
+    list.push({id:uniqueId, name:name, bodyweight: bwVal===1, muscle: muscle, variant: variantVal, position: maxPos+1});
     saveEx(list);
     logDraft.exerciseId = uniqueId;
     logDraft.musclePos = "1-2";
@@ -1330,9 +1382,15 @@ function openEditExerciseModal(exId, onSaved){
     var newName = document.getElementById("editExName").value.trim();
     if(!newName){ showToast("Skriv et navn"); return; }
     var muscle = document.getElementById("editExMuscle").value || null;
+    /* Object.assign bevarer felter der ikke redigeres i denne modal (vigtigst:
+       "position" — rækkefølgen i Øvelser-listen). Tidligere blev øvelsen
+       genopbygget fra bunden her, hvilket nulstillede dens gemte position
+       hver gang man omdøbte/kategoriserede den — det var årsagen til at
+       nyligt redigerede øvelser (typisk i Ben-programmet) sprang rundt i
+       rækkefølgen efter man havde redigeret dem. */
     var list = loadEx().map(function(e){
       if(e.id!==exId) return e;
-      return {id:e.id, name:newName, bodyweight: bwVal===1, muscle: muscle, variant: variantVal};
+      return Object.assign({}, e, {name:newName, bodyweight: bwVal===1, muscle: muscle, variant: variantVal});
     });
     saveEx(list);
     closeModal();
@@ -1753,12 +1811,20 @@ function variantHas(e, letter){
   return String(e.variant||"").indexOf(letter)!==-1;
 }
 
+/* Korte fane-navne til de 3 grupper, i samme rækkefølge som MUSCLE_GROUPS_BY_DAY
+   (Ryg-gruppen, Bryst-gruppen, Ben-gruppen) — bruges kun til selve fanebladene,
+   den fulde titel ("Ryg, Bagskulder & Tricep" osv.) vises stadig ovenfor listerne. */
+var EXERCISE_TAB_LABELS = ["Ryg", "Bryst", "Ben"];
+
 function renderExercisesPage(){
   state.viewUser = null;
+  if(state.exercisesTab===undefined || state.exercisesTab===null || state.exercisesTab<0 || state.exercisesTab>=MUSCLE_GROUPS_BY_DAY.length){
+    state.exercisesTab = 0;
+  }
   var ex = loadEx();
-  var html = '<h2 class="section">Øvelser</h2>';
+  var html = '<h2 class="section">Øvelser/Mit program</h2>';
   html += '<button class="btn" id="addExBtn" style="margin-bottom:6px;">＋ Tilføj ny øvelse</button>';
-  html += '<div class="muted" style="margin-bottom:10px;text-align:center;">Hold en øvelse inde og træk den op/ned for at ændre rækkefølgen i en liste.</div>';
+  html += '<div class="muted" style="margin-bottom:10px;text-align:center;">Hold en øvelse inde og træk den op/ned for at ændre rækkefølgen. Swipe til venstre i Program 1/2 for at fjerne en øvelse.</div>';
 
   function sortInGroup(arr, grp){
     return arr.slice().sort(function(a,b){
@@ -1770,11 +1836,16 @@ function renderExercisesPage(){
       return a.name.localeCompare(b.name);
     });
   }
-  function listHtml(arr, grp){
+  function listHtml(arr, grp, letter){
     if(arr.length===0) return '<div class="card" style="margin-top:0;margin-bottom:16px;"><div class="muted" style="text-align:center;">(tom — tryk Rediger for at tilføje øvelser)</div></div>';
-    var out = '<div class="card reorder-list" style="padding:0;margin-top:0;margin-bottom:16px;">';
+    var out = '<div class="card reorder-list" data-listletter="'+(letter||"")+'" style="padding:0;margin-top:0;margin-bottom:16px;">';
     sortInGroup(arr, grp).forEach(function(e){
-      out += '<div class="list-row" data-exid="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">'+(MUSCLE_LABELS[e.muscle]||"")+(e.bodyweight?' · Kropsvægt':'')+'</div></div><div class="chev">≡&nbsp;&nbsp;›</div></div>';
+      var row = '<div class="list-row" data-exid="'+e.id+'"><div><div class="name">'+escapeHtml(e.name)+'</div><div class="muted">'+(MUSCLE_LABELS[e.muscle]||"")+(e.bodyweight?' · Kropsvægt':'')+'</div></div><div class="chev">≡&nbsp;&nbsp;›</div></div>';
+      if(letter){
+        out += '<div class="swipe-wrap"><div class="swipe-bg">Fjern</div>'+row+'</div>';
+      } else {
+        out += row;
+      }
     });
     out += '</div>';
     return out;
@@ -1783,7 +1854,7 @@ function renderExercisesPage(){
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="train-tag" style="margin-bottom:0;">'+label+'</div><button class="pill-btn dim" data-editlist="'+letter+'" data-group="'+grpIdx+'">Rediger</button></div>';
   }
 
-  /* Nye/ukategoriserede øvelser øverst */
+  /* Nye/ukategoriserede øvelser øverst — vises altid, uanset hvilken fane der er valgt */
   var uncategorized = ex.filter(function(e){ return !e.muscle; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
   if(uncategorized.length){
     html += '<div class="train-tag" style="background:var(--red);color:#fff;">Ikke kategoriseret</div>';
@@ -1795,22 +1866,39 @@ function renderExercisesPage(){
     html += '</div>';
   }
 
-  MUSCLE_GROUPS_BY_DAY.forEach(function(grp, grpIdx){
-    var inGroup = ex.filter(function(e){ return e.muscle && grp.muscles.indexOf(e.muscle)!==-1; });
-    if(inGroup.length===0) return;
-    html += '<h2 class="section">'+escapeHtml(grp.title)+'</h2>';
+  /* Faner: Ryg / Bryst / Ben (eller "Gruppe 1/2/3" hvis brugeren har lavet sin egen gruppering) */
+  var effGroups = getEffectiveGroups();
+  var usingDefaultLayout = (effGroups === MUSCLE_GROUPS_BY_DAY);
+  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">';
+  html += '<button class="pill-btn dim" id="editGroupLayoutBtn">Rediger grupperinger</button>';
+  html += '</div>';
+  html += '<div class="ex-tabs">';
+  effGroups.forEach(function(grp, grpIdx){
+    var active = (grpIdx === state.exercisesTab);
+    var label = usingDefaultLayout ? (EXERCISE_TAB_LABELS[grpIdx]||grp.title) : ("Gruppe "+(grpIdx+1));
+    html += '<button class="ex-tab'+(active?' active':'')+'" data-tab="'+grpIdx+'">'+escapeHtml(label)+'</button>';
+  });
+  html += '</div>';
+
+  var grpIdx = state.exercisesTab;
+  var grp = effGroups[grpIdx];
+  var inGroup = ex.filter(function(e){ return e.muscle && grp.muscles.indexOf(e.muscle)!==-1; });
+  html += '<h2 class="section" style="margin-top:12px;">'+escapeHtml(grp.title)+'</h2>';
+  if(inGroup.length===0){
+    html += '<div class="card"><div class="empty-state">Ingen øvelser i denne gruppe endnu.</div></div>';
+  } else {
     var listA = inGroup.filter(function(e){ return variantHas(e,"a"); });
     var listB = inGroup.filter(function(e){ return variantHas(e,"b"); });
     var listC = inGroup.filter(function(e){ return !variantHas(e,"a") && !variantHas(e,"b"); });
-    html += listHeader("Liste A", grpIdx, "a");
-    html += listHtml(listA, grp);
-    html += listHeader("Liste B", grpIdx, "b");
-    html += listHtml(listB, grp);
+    html += listHeader("Program 1", grpIdx, "a");
+    html += listHtml(listA, grp, "a");
+    html += listHeader("Program 2", grpIdx, "b");
+    html += listHtml(listB, grp, "b");
     if(listC.length){
-      html += '<div class="train-tag" style="background:var(--bg-elevated);color:var(--text-dim);">Liste C — øvrige</div>';
-      html += listHtml(listC, grp);
+      html += '<div class="train-tag" style="background:var(--bg-elevated);color:var(--text-dim);">Øvrige øvelser</div>';
+      html += listHtml(listC, grp, null);
     }
-  });
+  }
 
   if(ex.length===0){
     html += '<div class="card"><div class="empty-state">Ingen øvelser endnu — tilføj din første! 💪</div></div>';
@@ -1818,13 +1906,20 @@ function renderExercisesPage(){
 
   main.innerHTML = html;
   document.getElementById("addExBtn").addEventListener("click", function(){ openAddExerciseModal(""); });
+  document.getElementById("editGroupLayoutBtn").addEventListener("click", function(){ openGroupLayoutModal(); });
+  main.querySelectorAll("[data-tab]").forEach(function(btn){
+    bindTapAction(btn, function(){
+      state.exercisesTab = parseInt(btn.getAttribute("data-tab"),10);
+      renderExercisesPage();
+    });
+  });
   main.querySelectorAll("[data-exid]").forEach(function(row){
     row.addEventListener("click", function(){
       if(Date.now() - lastReorderEnd < 500) return; /* var et træk, ikke et tryk */
       goto("exerciseHistory", {selectedExerciseId: row.getAttribute("data-exid"), viewUser:null, histBack:"exercises"});
     });
   });
-  main.querySelectorAll(".reorder-list").forEach(function(cont){ attachListReorder(cont); });
+  main.querySelectorAll(".reorder-list").forEach(function(cont){ attachListReorder(cont, cont.getAttribute("data-listletter")||null); });
   main.querySelectorAll("[data-catid]").forEach(function(row){
     row.addEventListener("click", function(){
       openEditExerciseModal(row.getAttribute("data-catid"), function(){ renderExercisesPage(); });
@@ -1857,33 +1952,41 @@ function persistListOrder(orderedIds){
   }
 }
 
-function attachListReorder(container){
+/* letter: "a"/"b" hvis denne liste er Program 1/2 (så swipe-til-venstre er aktiv),
+   null/undefined for Øvrige øvelser (kun træk-og-slip, ingen swipe). */
+function attachListReorder(container, letter){
   var pressTimer = null;
-  var dragging = null;
-  var startY = 0;
+  var dragging = null;    /* container-børn (row eller swipe-wrap) der trækkes lodret */
+  var swipingRow = null;  /* .list-row der swipes vandret */
+  var startX = 0, startY = 0;
+  var SWIPE_REMOVE_PX = 90;
 
-  function rowsOf(){ return Array.prototype.slice.call(container.querySelectorAll(".list-row[data-exid]")); }
+  function unitsOf(){ return Array.prototype.slice.call(container.children); }
   function pointY(e){ return (e.touches && e.touches.length) ? e.touches[0].clientY : e.clientY; }
+  function pointX(e){ return (e.touches && e.touches.length) ? e.touches[0].clientX : e.clientX; }
+  function innerRowOf(unit){ return unit.classList.contains("list-row") ? unit : unit.querySelector(".list-row"); }
+  function exIdOf(unit){ var r = innerRowOf(unit); return r ? r.getAttribute("data-exid") : null; }
 
-  function startDrag(row){
-    dragging = row;
-    row.classList.add("dragging");
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-    document.addEventListener("touchmove", onMove, {passive:false});
-    document.addEventListener("touchend", onUp);
+  /* ---- lodret træk-og-slip (rækkefølge) ---- */
+  function startVertDrag(unit){
+    dragging = unit;
+    innerRowOf(unit).classList.add("dragging");
+    document.addEventListener("mousemove", onMoveVert);
+    document.addEventListener("mouseup", onUpVert);
+    document.addEventListener("touchmove", onMoveVert, {passive:false});
+    document.addEventListener("touchend", onUpVert);
   }
-  function stopListeners(){
-    document.removeEventListener("mousemove", onMove);
-    document.removeEventListener("mouseup", onUp);
-    document.removeEventListener("touchmove", onMove, {passive:false});
-    document.removeEventListener("touchend", onUp);
+  function stopVertListeners(){
+    document.removeEventListener("mousemove", onMoveVert);
+    document.removeEventListener("mouseup", onUpVert);
+    document.removeEventListener("touchmove", onMoveVert, {passive:false});
+    document.removeEventListener("touchend", onUpVert);
   }
-  function onMove(e){
+  function onMoveVert(e){
     if(!dragging) return;
     if(e.cancelable) e.preventDefault(); /* stop siden i at scrolle imens */
     var y = pointY(e);
-    rowsOf().forEach(function(other){
+    unitsOf().forEach(function(other){
       if(other===dragging) return;
       var r = other.getBoundingClientRect();
       var mid = r.top + r.height/2;
@@ -1895,38 +1998,111 @@ function attachListReorder(container){
       }
     });
   }
-  function onUp(){
+  function onUpVert(){
     if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
     if(!dragging) return;
-    dragging.classList.remove("dragging");
+    innerRowOf(dragging).classList.remove("dragging");
     dragging = null;
-    stopListeners();
+    stopVertListeners();
     lastReorderEnd = Date.now();
-    persistListOrder(rowsOf().map(function(r){ return r.getAttribute("data-exid"); }));
+    persistListOrder(unitsOf().map(exIdOf));
   }
+
+  /* ---- vandret swipe-til-venstre (fjern fra Program 1/2) ---- */
+  function startHorizSwipe(row){
+    swipingRow = row;
+    row.style.transition = "none";
+    document.addEventListener("mousemove", onMoveHoriz);
+    document.addEventListener("mouseup", onUpHoriz);
+    document.addEventListener("touchmove", onMoveHoriz, {passive:false});
+    document.addEventListener("touchend", onUpHoriz);
+  }
+  function stopHorizListeners(){
+    document.removeEventListener("mousemove", onMoveHoriz);
+    document.removeEventListener("mouseup", onUpHoriz);
+    document.removeEventListener("touchmove", onMoveHoriz, {passive:false});
+    document.removeEventListener("touchend", onUpHoriz);
+  }
+  function onMoveHoriz(e){
+    if(!swipingRow) return;
+    if(e.cancelable) e.preventDefault();
+    var dx = Math.min(0, pointX(e) - startX);
+    swipingRow.style.transform = "translateX("+dx+"px)";
+  }
+  function onUpHoriz(){
+    if(!swipingRow) return;
+    var row = swipingRow;
+    var m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(row.style.transform);
+    var dx = m ? parseFloat(m[1]) : 0;
+    swipingRow = null;
+    stopHorizListeners();
+    lastReorderEnd = Date.now();
+    row.style.transition = "transform 0.18s";
+    if(Math.abs(dx) >= SWIPE_REMOVE_PX){
+      row.style.transform = "translateX(-100%)";
+      var exId = row.getAttribute("data-exid");
+      setTimeout(function(){ removeFromList(exId); }, 160);
+    } else {
+      row.style.transform = "";
+    }
+  }
+  function removeFromList(exId){
+    var list = loadEx().map(function(e){
+      if(e.id!==exId) return e;
+      var letters = String(e.variant||"").replace(letter, "");
+      var norm = (letters.indexOf("a")!==-1?"a":"") + (letters.indexOf("b")!==-1?"b":"");
+      return Object.assign({}, e, {variant: norm || null});
+    });
+    saveEx(list);
+    showToast("Flyttet til Øvrige øvelser ✓");
+    renderExercisesPage();
+  }
+
+  /* ---- fælles tryk-håndtering: afgør om det bliver et lodret træk, et vandret swipe, eller bare et tryk ---- */
   function onDown(e){
     var row = e.target && e.target.closest ? e.target.closest(".list-row[data-exid]") : null;
-    if(!row || row.parentNode!==container) return;
+    if(!row) return;
+    var unit = row.closest(".swipe-wrap") || row;
+    if(unit.parentNode!==container) return;
     startY = pointY(e);
+    startX = pointX(e);
+    var decided = null;
+
+    function cleanup(){
+      document.removeEventListener("mousemove", moveCheck);
+      document.removeEventListener("touchmove", moveCheck);
+      document.removeEventListener("mouseup", upCheck);
+      document.removeEventListener("touchend", upCheck);
+    }
+    var moveCheck = function(ev){
+      if(decided) return;
+      var dx = pointX(ev) - startX, dy = pointY(ev) - startY;
+      if(letter && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)){
+        decided = "horiz";
+        clearTimeout(pressTimer); pressTimer = null;
+        cleanup();
+        startHorizSwipe(row);
+        onMoveHoriz(ev);
+      } else if(Math.abs(dy) > 12){
+        clearTimeout(pressTimer); pressTimer = null;
+        cleanup();
+      }
+    };
+    var upCheck = function(){
+      clearTimeout(pressTimer); pressTimer = null;
+      cleanup();
+    };
     clearTimeout(pressTimer);
-    pressTimer = setTimeout(function(){ startDrag(row); }, 350);
-    /* fortryd langt tryk hvis man begynder at scrolle inden tiden er gået */
-    var cancelMove = function(ev){
-      if(dragging) return;
-      if(Math.abs(pointY(ev)-startY) > 12 && pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
-    };
-    var cancelUp = function(){
-      if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
-      document.removeEventListener("mousemove", cancelMove);
-      document.removeEventListener("touchmove", cancelMove);
-      document.removeEventListener("mouseup", cancelUp);
-      document.removeEventListener("touchend", cancelUp);
-      if(dragging) onUp();
-    };
-    document.addEventListener("mousemove", cancelMove);
-    document.addEventListener("touchmove", cancelMove);
-    document.addEventListener("mouseup", cancelUp);
-    document.addEventListener("touchend", cancelUp);
+    pressTimer = setTimeout(function(){
+      if(decided) return;
+      decided = "vert";
+      cleanup();
+      startVertDrag(unit);
+    }, 350);
+    document.addEventListener("mousemove", moveCheck);
+    document.addEventListener("touchmove", moveCheck);
+    document.addEventListener("mouseup", upCheck);
+    document.addEventListener("touchend", upCheck);
   }
   container.addEventListener("mousedown", onDown);
   container.addEventListener("touchstart", onDown, {passive:true});
@@ -1934,7 +2110,7 @@ function attachListReorder(container){
 
 /* Redigér hvilke øvelser der er med i Liste A eller B for en muskelgruppe */
 function openEditListModal(grpIdx, letter){
-  var grp = MUSCLE_GROUPS_BY_DAY[grpIdx];
+  var grp = getEffectiveGroups()[grpIdx];
   if(!grp) return;
   var inGroup = loadEx().filter(function(e){ return e.muscle && grp.muscles.indexOf(e.muscle)!==-1; })
     .sort(function(a,b){
@@ -1945,8 +2121,9 @@ function openEditListModal(grpIdx, letter){
   var checked = {};
   inGroup.forEach(function(e){ checked[e.id] = variantHas(e, letter); });
 
-  var html = '<h3>Liste '+letter.toUpperCase()+' — '+escapeHtml(grp.title)+'</h3>';
-  html += '<div class="muted" style="margin-bottom:12px;">Vælg hvilke øvelser der skal være på listen. Øvelser uden liste ligger i Liste C.</div>';
+  var programLabel = (letter==="a") ? "Program 1" : "Program 2";
+  var html = '<h3>'+programLabel+' — '+escapeHtml(grp.title)+'</h3>';
+  html += '<div class="muted" style="margin-bottom:12px;">Vælg hvilke øvelser der skal være med. Øvelser der ikke er valgt ligger i Øvrige øvelser.</div>';
   html += '<div class="search-results" style="margin-bottom:14px;">';
   inGroup.forEach(function(e){
     html += '<div class="search-result-item" data-chk="'+e.id+'"><span>'+escapeHtml(e.name)+' <span class="muted">('+(MUSCLE_LABELS[e.muscle]||"")+')</span></span><span style="font-size:18px;font-weight:800;color:var(--yellow);" id="chk_'+e.id+'">'+(checked[e.id]?"☑":"☐")+'</span></div>';
@@ -1975,58 +2152,139 @@ function openEditListModal(grpIdx, letter){
     });
     saveEx(list);
     closeModal();
-    showToast("Liste "+letter.toUpperCase()+" opdateret ✓");
+    showToast(programLabel+" opdateret ✓");
     renderExercisesPage();
   });
 }
 
+/* Lader brugeren selv bestemme hvilke muskelgrupper der hører sammen i de 3 faner
+   (fx flytte Tricep over til Bryst-gruppen). Gemmes kun på egen konto (profiles.group_layout)
+   og påvirker ingen andre brugere — og ændrer ikke noget før man selv trykker Gem. */
+function openGroupLayoutModal(){
+  var current = getEffectiveGroups(); // altid gyldig (default eller brugerens egen)
+  var assign = {}; // muscle -> 0/1/2
+  MUSCLE_ORDER.forEach(function(m){
+    for(var i=0;i<current.length;i++){
+      if(current[i].muscles.indexOf(m)!==-1){ assign[m] = i; break; }
+    }
+  });
+
+  var html = '<h3>Rediger grupperinger</h3>';
+  html += '<div class="muted" style="margin-bottom:14px;">Vælg hvilken af de 3 faner hver muskelgruppe skal ligge under. Dette gælder kun din egen konto.</div>';
+  MUSCLE_ORDER.forEach(function(m){
+    html += '<div class="field"><label class="field-label">'+escapeHtml(MUSCLE_LABELS[m]||m)+'</label>';
+    html += '<select data-grpmuscle="'+m+'" style="width:100%;padding:12px;border-radius:10px;background:var(--card2,#1c1c1f);color:var(--text);border:1px solid var(--border);font-size:15px;">';
+    [0,1,2].forEach(function(i){
+      html += '<option value="'+i+'"'+(assign[m]===i?' selected':'')+'>Gruppe '+(i+1)+'</option>';
+    });
+    html += '</select></div>';
+  });
+  html += '<button class="btn primary" id="saveGroupLayoutBtn">Gem grupperinger</button>';
+  if(myProfile && myProfile.group_layout){
+    html += '<button class="btn" id="resetGroupLayoutBtn" style="margin-top:8px;">Nulstil til standard (Ryg/Bryst/Ben)</button>';
+  }
+  openModal(html);
+
+  document.getElementById("saveGroupLayoutBtn").addEventListener("click", function(){
+    var layout = [[],[],[]];
+    MUSCLE_ORDER.forEach(function(m){
+      var sel = modalSheet.querySelector('[data-grpmuscle="'+m+'"]');
+      var i = parseInt(sel.value, 10);
+      layout[i].push(m);
+    });
+    if(layout.some(function(arr){ return arr.length===0; })){
+      showToast("Hver gruppe skal have mindst én muskelgruppe");
+      return;
+    }
+    sb.from("profiles").update({ group_layout: layout }).eq("id", session.user.id).then(function(res){
+      if(res.error){ showToast("Kunne ikke gemme grupperingen"); return; }
+      myProfile.group_layout = layout;
+      state.exercisesTab = 0;
+      closeModal();
+      showToast("Grupperinger gemt ✓");
+      renderExercisesPage();
+    });
+  });
+  var resetBtn = document.getElementById("resetGroupLayoutBtn");
+  if(resetBtn){
+    resetBtn.addEventListener("click", function(){
+      sb.from("profiles").update({ group_layout: null }).eq("id", session.user.id).then(function(res){
+        if(res.error){ showToast("Kunne ikke nulstille grupperingen"); return; }
+        myProfile.group_layout = null;
+        state.exercisesTab = 0;
+        closeModal();
+        showToast("Nulstillet til standard ✓");
+        renderExercisesPage();
+      });
+    });
+  }
+}
+
 /* Start-katalog: nye konti får hele øvelseslisten (med muskelgruppe og Liste A/B),
    men selvfølgelig INGEN loggede sæt — de starter som om de aldrig har trænet. */
+/* Alle nye brugere starter med hele Matteos øvelseskatalog i Liste C (variant:null),
+   så de selv kan sammensætte deres egne Liste A/B ud fra den fulde liste. */
 var STARTER_CATALOG = [
-  {id:"weighted-pull-ups", name:"Weighted pull-ups", bodyweight:true, muscle:"ryg", variant:"a"},
-  {id:"chest-supported-row-neutral", name:"Chest-supported row (neutral grip)", bodyweight:false, muscle:"ryg", variant:"a"},
-  {id:"chest-supported-row-wide", name:"Chest-supported row (wide grip)", bodyweight:false, muscle:"ryg", variant:"a"},
-  {id:"rear-delt-flyes-cable", name:"Rear delt flyes (cable)", bodyweight:false, muscle:"bagskulder", variant:"a"},
-  {id:"pec-deck-rear-delt", name:"Pec deck rear delt", bodyweight:false, muscle:"bagskulder", variant:"a"},
-  {id:"one-arm-cable-pushdown", name:"One-arm cable pushdown", bodyweight:false, muscle:"tricep", variant:"a"},
-  {id:"dumbbell-skullcrushers", name:"Dumbbell skullcrushers", bodyweight:false, muscle:"tricep", variant:"a"},
-  {id:"chin-ups", name:"Chin-ups", bodyweight:true, muscle:"ryg", variant:"b"},
-  {id:"bent-over-rows", name:"Bent-over rows", bodyweight:false, muscle:"ryg", variant:"b"},
-  {id:"close-grip-lat-pulldown", name:"Close-grip lat pulldown", bodyweight:false, muscle:"ryg", variant:"b"},
-  {id:"wide-grip-lat-pulldown", name:"Wide-grip lat pulldown", bodyweight:false, muscle:"ryg", variant:"b"},
-  {id:"rear-delt-flyes-single", name:"Rear delt flyes (single arm)", bodyweight:false, muscle:"bagskulder", variant:"b"},
-  {id:"barbell-skullcrushers", name:"Barbell skullcrushers", bodyweight:false, muscle:"tricep", variant:"b"},
-  {id:"rope-pushdown-cable", name:"Rope pushdown (cable)", bodyweight:false, muscle:"tricep", variant:"b"},
-  {id:"single-arm-tricep-pushdown", name:"Single-arm tricep pushdown", bodyweight:false, muscle:"tricep", variant:"b"},
-  {id:"leg-extension", name:"Leg extension", bodyweight:false, muscle:"ben", variant:"ab"},
-  {id:"squat", name:"Squat", bodyweight:false, muscle:"ben", variant:"a"},
-  {id:"hamstring-curl", name:"Hamstring curl", bodyweight:false, muscle:"ben", variant:"ab"},
-  {id:"barbell-rdl", name:"Barbell RDL", bodyweight:false, muscle:"ben", variant:"ab"},
-  {id:"hip-abduction-adduction", name:"Hip abduction/adduction machine", bodyweight:false, muscle:"ben", variant:"a"},
-  {id:"calf-raise", name:"Calf raise", bodyweight:false, muscle:"ben", variant:"a"},
-  {id:"leg-raises", name:"Leg raises", bodyweight:true, muscle:"mave", variant:"ab"},
-  {id:"cable-crunches", name:"Cable crunches", bodyweight:false, muscle:"mave", variant:"a"},
-  {id:"bulgarian-split-squat", name:"Bulgarian split squat", bodyweight:false, muscle:"ben", variant:"b"},
-  {id:"pendulum-squat", name:"Pendulum squat", bodyweight:false, muscle:"ben", variant:"b"},
-  {id:"calf-raise-seated", name:"Calf raise (seated)", bodyweight:false, muscle:"ben", variant:"b"},
-  {id:"machine-crunches", name:"Machine crunches", bodyweight:false, muscle:"mave", variant:"b"},
-  {id:"bench-press", name:"Bench press", bodyweight:false, muscle:"bryst", variant:"a"},
-  {id:"incline-smith-press", name:"Incline smith machine press", bodyweight:false, muscle:"bryst", variant:"a"},
-  {id:"pec-deck", name:"Pec deck", bodyweight:false, muscle:"bryst", variant:"a"},
-  {id:"lateral-raise-cable-single", name:"Lateral raise (cable, single arm)", bodyweight:false, muscle:"sideskulder", variant:"a"},
-  {id:"shoulder-press-barbell", name:"Shoulder press (barbell)", bodyweight:false, muscle:"forskulder", variant:"a"},
-  {id:"incline-dumbbell-curl", name:"Incline dumbbell curl", bodyweight:false, muscle:"biceps", variant:"a"},
-  {id:"dumbbell-preacher-machine", name:"Dumbbell preacher curl (machine)", bodyweight:false, muscle:"biceps", variant:"a"},
-  {id:"ez-bar-curl", name:"EZ-bar curl (overhand)", bodyweight:false, muscle:"biceps", variant:"ab"},
-  {id:"incline-dumbbell-press", name:"Incline dumbbell press", bodyweight:false, muscle:"bryst", variant:"b"},
-  {id:"dips", name:"Dips", bodyweight:true, muscle:"bryst", variant:"b"},
-  {id:"cable-fly-upper", name:"Cable fly (upper)", bodyweight:false, muscle:"bryst", variant:"b"},
-  {id:"cable-fly-mid", name:"Cable fly (mid)", bodyweight:false, muscle:"bryst", variant:"b"},
-  {id:"military-press-dumbbell", name:"Military press (dumbbell)", bodyweight:false, muscle:"forskulder", variant:"b"},
-  {id:"lateral-raise-lying", name:"Lateral raise (lying)", bodyweight:false, muscle:"sideskulder", variant:"b"},
-  {id:"bayesian-cable-curl", name:"Bayesian cable curl", bodyweight:false, muscle:"biceps", variant:"b"},
-  {id:"hammer-curl-preacher", name:"Hammer curl (preacher/iso)", bodyweight:false, muscle:"biceps", variant:"b"},
-  {id:"ez-bar-curls", name:"EZ-bar curls", bodyweight:false, muscle:"biceps", variant:null}
+  {id:"pec-deck-rear-delt", name:"Pec deck rear delt", bodyweight:false, muscle:"bagskulder", variant:null},
+  {id:"suppinated-single-arm-lat-stretch", name:"Suppinated single-arm lat stretch", bodyweight:false, muscle:"bagskulder", variant:null},
+  {id:"up-row-rotater-cuff-shoulder-press", name:"Up-row Rotater-cuff shoulder press", bodyweight:false, muscle:"bagskulder", variant:null},
+  {id:"czech-press", name:"Czech press", bodyweight:false, muscle:"bagskulder", variant:null},
+  {id:"y-raises", name:"Y-raises", bodyweight:false, muscle:"bagskulder", variant:null},
+  {id:"rear-delt-flyes-single", name:"Rear delt flyes (single arm)", bodyweight:false, muscle:"bagskulder", variant:null},
+  {id:"rear-delt-flyes-cable", name:"Rear delt flyes (cable)", bodyweight:false, muscle:"bagskulder", variant:null},
+  {id:"seated-hamstring-curl", name:"Seated hamstring curl", bodyweight:false, muscle:"ben", variant:null},
+  {id:"squat", name:"Squat", bodyweight:false, muscle:"ben", variant:null},
+  {id:"calf-raise", name:"Calf raise", bodyweight:false, muscle:"ben", variant:null},
+  {id:"leg-extension", name:"Leg extension", bodyweight:false, muscle:"ben", variant:null},
+  {id:"barbell-rdl", name:"Barbell RDL", bodyweight:false, muscle:"ben", variant:null},
+  {id:"hip-abduction-adduction", name:"Hip abduction", bodyweight:false, muscle:"ben", variant:null},
+  {id:"hip-adduction", name:"Hip adduction", bodyweight:false, muscle:"ben", variant:null},
+  {id:"bulgarian-split-squat", name:"Bulgarian split squat", bodyweight:false, muscle:"ben", variant:null},
+  {id:"pendulum-squat", name:"Pendulum squat", bodyweight:false, muscle:"ben", variant:null},
+  {id:"hamstring-curl", name:"Laying hamstring curl", bodyweight:false, muscle:"ben", variant:null},
+  {id:"calf-raise-seated", name:"Calf raise (seated)", bodyweight:false, muscle:"ben", variant:null},
+  {id:"incline-dumbbell-curl", name:"Incline dumbbell curl", bodyweight:false, muscle:"biceps", variant:null},
+  {id:"ez-bar-preacher-curl", name:"EZ-bar preacher curl", bodyweight:false, muscle:"biceps", variant:null},
+  {id:"ez-bar-curl", name:"EZ-bar curl (overhand)", bodyweight:false, muscle:"biceps", variant:null},
+  {id:"dead-hang-sek", name:"Dead hang (Sek)", bodyweight:false, muscle:"biceps", variant:null},
+  {id:"bayesian-cable-curl", name:"Bayesian cable curl", bodyweight:false, muscle:"biceps", variant:null},
+  {id:"ez-bar-curls", name:"EZ-bar curls", bodyweight:false, muscle:"biceps", variant:null},
+  {id:"hammer-curl-preacher", name:"Hammer curl (Isolation)", bodyweight:false, muscle:"biceps", variant:null},
+  {id:"dumbell-preacher-curl", name:"Dumbell preacher curl", bodyweight:false, muscle:"biceps", variant:null},
+  {id:"dumbbell-preacher-machine", name:"Preacher curl (machine)", bodyweight:false, muscle:"biceps", variant:null},
+  {id:"bench-press", name:"Bench press", bodyweight:false, muscle:"bryst", variant:null},
+  {id:"incline-smith-press", name:"Incline smith machine press", bodyweight:false, muscle:"bryst", variant:null},
+  {id:"pec-deck", name:"Pec deck", bodyweight:false, muscle:"bryst", variant:null},
+  {id:"incline-dumbbell-press", name:"Incline dumbbell press", bodyweight:false, muscle:"bryst", variant:null},
+  {id:"dips", name:"Dips", bodyweight:true, muscle:"bryst", variant:null},
+  {id:"incline-bench-press", name:"Incline bench press", bodyweight:false, muscle:"bryst", variant:null},
+  {id:"cable-fly-mid", name:"Cable fly (mid)", bodyweight:false, muscle:"bryst", variant:null},
+  {id:"cable-fly-upper", name:"Cable fly (upper)", bodyweight:false, muscle:"bryst", variant:null},
+  {id:"incline-machine-press", name:"Incline machine press", bodyweight:false, muscle:"bryst", variant:null},
+  {id:"military-press-dumbbell", name:"Military press (dumbbell)", bodyweight:false, muscle:"forskulder", variant:null},
+  {id:"shoulder-press-barbell", name:"Db Shoulder press", bodyweight:false, muscle:"forskulder", variant:null},
+  {id:"cable-crunches", name:"Cable crunches", bodyweight:false, muscle:"mave", variant:null},
+  {id:"leg-raises", name:"Leg raises", bodyweight:true, muscle:"mave", variant:null},
+  {id:"machine-crunches", name:"Machine crunches", bodyweight:false, muscle:"mave", variant:null},
+  {id:"weighted-pull-ups", name:"Weighted pull-ups", bodyweight:true, muscle:"ryg", variant:null},
+  {id:"chest-supported-db-row", name:"Chest-supported Db row", bodyweight:false, muscle:"ryg", variant:null},
+  {id:"seated-chest-supported-wide-row", name:"Seated chest-supported wide row", bodyweight:false, muscle:"ryg", variant:null},
+  {id:"chin-ups", name:"Weighted Chin-ups", bodyweight:true, muscle:"ryg", variant:null},
+  {id:"bent-over-rows", name:"Bent-over rows", bodyweight:false, muscle:"ryg", variant:null},
+  {id:"close-grip-lat-pulldown", name:"Close-grip lat pulldown", bodyweight:false, muscle:"ryg", variant:null},
+  {id:"wide-grip-lat-pulldown", name:"Wide-grip lat pulldown", bodyweight:false, muscle:"ryg", variant:null},
+  {id:"chest-supported-row-neutral", name:"Chest-supported row (neutral grip)", bodyweight:false, muscle:"ryg", variant:null},
+  {id:"chest-supported-row-wide", name:"Chest-supported row (wide grip)", bodyweight:false, muscle:"ryg", variant:null},
+  {id:"lateral-raise-cable-single", name:"Lateral raise (cable, single arm)", bodyweight:false, muscle:"sideskulder", variant:null},
+  {id:"lateral-raise-lying", name:"Lateral raise (lying)", bodyweight:false, muscle:"sideskulder", variant:null},
+  {id:"dumbell-lateral-raise", name:"Dumbell lateral raise", bodyweight:false, muscle:"sideskulder", variant:null},
+  {id:"dumbbell-skullcrushers", name:"Dumbbell skullcrushers", bodyweight:false, muscle:"tricep", variant:null},
+  {id:"one-arm-cable-pushdown", name:"One-arm cable pushdown", bodyweight:false, muscle:"tricep", variant:null},
+  {id:"rope-pushdown-cable", name:"Rope pushdown (cable)", bodyweight:false, muscle:"tricep", variant:null},
+  {id:"single-arm-tricep-pushdown", name:"Single-arm tricep pushdown", bodyweight:false, muscle:"tricep", variant:null},
+  {id:"barbell-skullcrushers", name:"Barbell skullcrushers", bodyweight:false, muscle:"tricep", variant:null},
+  {id:"db-overhead-tricep-extension", name:"Db overhead tricep extension", bodyweight:false, muscle:"tricep", variant:null},
+  {id:"straight-bar-pushdown", name:"Straight bar pushdown", bodyweight:false, muscle:"tricep", variant:null}
 ];
 function maybeSeedCatalog(){
   if(memEx.length>0) return Promise.resolve();
