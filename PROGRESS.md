@@ -9,6 +9,8 @@ Matteo ville ikke skulle scrolle forbi alle sine træninger for at nå frem til 
 
 Testet med jsdom (4 træningsdage langt fra hinanden i tid): kun 2 kort vises i starten, "Se tidligere"-knappen findes, klik udvider til alle 4 kort og knappen forsvinder, kommentarfelter findes korrekt for alle 4 kort efter udvidelse. Ingen JS-fejl. Selve "Størst fremgang"/"Mindst fremgang"-beregningen er upåvirket (den bruger al log-data uafhængigt af hvor mange kort der vises).
 
+**Tilføjelse samme runde:** Matteo bad om at listen skal nulstilles til kun 2 kort igen, hvis man forlader "Dig" og går tilbage (fx via "Historik"-knappen), i stedet for at forblive udvidet resten af sessionen. Rettet i den centrale `goto(view)`-funktion (bruges af AL navigation i appen — både bundmenuen OG dropdown-menuen øverst): forlader man "Dig" til en anden side, nulstilles `state.digShowAll` automatisk. Testet med jsdom: Dig → udvid → Historik (bundmenu) → Dig viser igen kun 2 kort. Matteo spurgte specifikt om dropdown-menuen også resetter — testet separat (Dig → udvid → dropdown-menu "Øvelser/Mit program" → Dig): virker allerede korrekt, ingen ekstra kodeændring nødvendig, da dropdown-menuens klik også går igennem samme `goto()`-funktion.
+
 **Skal uploades til GitHub:** kun `index.html`.
 
 ## Opdatering 2026-07-22 (18. runde — Program 1/2-navne, nulstilling af andres lister, swipe-fjern, brugerstyrede grupperinger)

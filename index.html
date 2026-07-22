@@ -651,6 +651,8 @@ function render(){
 }
 
 function goto(view, extra){
+  /* forlader man "Dig", nulstilles "Se tidligere"-udvidelsen, så listen er kort igen næste gang man kommer tilbage */
+  if(state.view==="dig" && view!=="dig") state.digShowAll = false;
   state.view = view;
   if(view!=="exerciseHistory" && view!=="friendProfile") state.viewUser = (view==="feed"||view==="friends") ? null : state.viewUser;
   if(extra) Object.assign(state, extra);
