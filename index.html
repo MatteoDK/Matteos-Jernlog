@@ -949,13 +949,18 @@ function ensureProfile(){
 }
 function tryInsertProfile(uname){
   if(!/^[a-z0-9æøå_.-]{2,20}$/.test(uname)) return promptUsername(uname);
-  return sb.from("profiles").insert({ id: session.user.id, username: uname, email: session.user.email||null }).then(function(res){
+  return sb.from("profiles").insert({ id: session.user.id, username: uname, email: session.user.email||null }).select().single().then(function(res){
     if(res.error){
       if(String(res.error.code)==="23505") return promptUsername(uname); // optaget
       showToast("Kunne ikke gemme profil: "+(res.error.message||""));
       return promptUsername(uname);
     }
-    myProfile = { id: session.user.id, username: uname, email: session.user.email||null };
+    /* Vigtigt: brug den rigtige række fra databasen (inkl. "approved":false) i
+       stedet for at bygge objektet selv — ellers mangler "approved"-feltet helt,
+       og godkendelses-tjekket i bootAfterLogin() (myProfile.approved===false)
+       fejler stille, så helt nye brugere kan snige sig forbi godkendelsesvæggen
+       i det allerførste øjeblik efter de opretter kontoen. */
+    myProfile = res.data;
     return true;
   });
 }
@@ -1344,13 +1349,6 @@ function renderLogForm(exObj){
     html += '<div class="mode-toggle-link" id="repsModeToggle">✎ Skriv interval i stedet (fx 7-9)</div>';
   }
   html += '</div>';
-  html += '<div class="field"><label class="field-label">Tidspunkt i træningen (for denne muskel)</label>';
-  html += '<div class="toggle-group" id="musclePosToggle">';
-  ["1-2","3-4"].forEach(function(p){
-    var label = "Øvelse "+p;
-    html += '<div class="toggle-opt'+(logDraft.musclePos===p?' selected':'')+'" data-mp="'+p+'">'+label+'</div>';
-  });
-  html += '</div></div>';
   html += '<div class="row"><button class="btn ghost" id="skipSetBtn" style="border:1px solid var(--border);">Spring sæt over</button><button class="btn primary" id="saveSetBtn">Gem sæt '+setNum+'</button></div>';
   html += '</div>';
   return html;
@@ -1414,17 +1412,6 @@ function attachLogFormHandlers(){
   if(renameBtn){
     renameBtn.addEventListener("click", function(){
       openEditExerciseModal(logDraft.exerciseId, function(){ renderLog(); });
-    });
-  }
-
-  var musclePosToggle = document.getElementById("musclePosToggle");
-  if(musclePosToggle){
-    musclePosToggle.querySelectorAll(".toggle-opt").forEach(function(opt){
-      opt.addEventListener("click", function(){
-        musclePosToggle.querySelectorAll(".toggle-opt").forEach(function(o){o.classList.remove("selected");});
-        opt.classList.add("selected");
-        logDraft.musclePos = opt.getAttribute("data-mp");
-      });
     });
   }
 
@@ -1647,16 +1634,8 @@ function renderExerciseHistory(exId){
     return;
   }
 
-  html += '<div class="card"><div class="muted" style="font-weight:700;color:var(--text);margin-bottom:6px;">Samlet udvikling</div>';
+  html += '<div class="card"><div class="muted" style="font-weight:700;color:var(--text);margin-bottom:6px;">Udvikling</div>';
   html += renderGraphSVG(sessions, exObj.bodyweight);
-  html += '</div>';
-
-  html += '<div class="card"><div class="muted" style="font-weight:700;color:var(--text);margin-bottom:6px;">Udvikling — øvelse 1-2 for muskel</div>';
-  html += renderGraphSVG(sessionsForExercise(exId, "1-2", ctx.logs), exObj.bodyweight);
-  html += '</div>';
-
-  html += '<div class="card"><div class="muted" style="font-weight:700;color:var(--text);margin-bottom:6px;">Udvikling — øvelse 3-4 for muskel</div>';
-  html += renderGraphSVG(sessionsForExercise(exId, "3-4", ctx.logs), exObj.bodyweight);
   html += '</div>';
 
   var reversedIdx = [];
@@ -1671,10 +1650,9 @@ function renderExerciseHistory(exId){
     html += '<div class="session-block">';
     html += '<div class="session-header"><span class="session-date">'+dateLabel+'</span>'+(isPR?'<span class="pr-badge">🏆 PR</span>':(trend?trendArrow(trend):''))+'</div>';
     s.sets.forEach(function(set){
-      var posLabel = " · Øvelse "+(set.musclePos||"1-2");
       html += '<div class="set-line" data-logid="'+set.id+'">';
       if(set.skipped){
-        html += '<div><b class="muted">– ikke sporet</b> <span class="set-meta">(sæt '+set.setNumber+posLabel+')</span></div>';
+        html += '<div><b class="muted">– ikke sporet</b> <span class="set-meta">(sæt '+set.setNumber+')</span></div>';
       } else {
         var wLabel;
         if(exObj.bodyweight){
@@ -1682,7 +1660,7 @@ function renderExerciseHistory(exId){
         } else {
           wLabel = set.weight+" kg";
         }
-        html += '<div><b>'+wLabel+'</b> × '+escapeHtml(set.repsLabel||String(set.reps))+' <span class="set-meta">(sæt '+set.setNumber+posLabel+')</span></div>';
+        html += '<div><b>'+wLabel+'</b> × '+escapeHtml(set.repsLabel||String(set.reps))+' <span class="set-meta">(sæt '+set.setNumber+')</span></div>';
       }
       if(!ctx.readOnly){
         html += '<div class="set-actions"><button class="icon-btn edit" data-action="edit" data-logid="'+set.id+'">✎</button><button class="icon-btn del" data-action="del" data-logid="'+set.id+'">🗑</button></div>';
@@ -1731,28 +1709,13 @@ function openEditSetModal(logId, exId){
   if(log.skipped){ html += '<div class="muted" style="margin-bottom:12px;">Dette sæt er markeret som ikke sporet (–).</div>'; }
   html += '<div class="field"><label class="field-label">'+(exObj.bodyweight?"Ekstra vægt (kg)":"Vægt (kg)")+'</label><input type="text" inputmode="decimal" id="editWeight" value="'+weightVal+'"></div>';
   html += '<div class="field"><label class="field-label">Reps (enkelt tal eller interval, fx 7-9)</label><input type="text" id="editReps" value="'+escapeHtml(String(repsVal))+'"></div>';
-  html += '<div class="field"><label class="field-label">Tidspunkt i træningen (for denne muskel)</label><div class="toggle-group" id="editMusclePosToggle">';
-  ["1-2","3-4"].forEach(function(p){
-    var label = "Øvelse "+p;
-    html += '<div class="toggle-opt'+((log.musclePos||"1-2")===p?' selected':'')+'" data-mp="'+p+'">'+label+'</div>';
-  });
-  html += '</div></div>';
   html += '<div class="row"><button class="btn ghost" id="skipEditBtn" style="border:1px solid var(--border);">Marker som sprunget over</button><button class="btn primary" id="saveEditBtn">Gem ændringer</button></div>';
   openModal(html);
-  var mp = log.musclePos || "1-2";
-  modalSheet.querySelectorAll("#editMusclePosToggle .toggle-opt").forEach(function(opt){
-    opt.addEventListener("click", function(){
-      modalSheet.querySelectorAll("#editMusclePosToggle .toggle-opt").forEach(function(o){o.classList.remove("selected");});
-      opt.classList.add("selected");
-      mp = opt.getAttribute("data-mp");
-    });
-  });
   document.getElementById("skipEditBtn").addEventListener("click", function(){
     log.skipped = true;
     log.weight = null;
     log.reps = null;
     log.repsLabel = "–";
-    log.musclePos = mp;
     saveLogs(logs);
     closeModal();
     renderExerciseHistory(exId);
@@ -1766,7 +1729,6 @@ function openEditSetModal(logId, exId){
     log.weight = exObj.bodyweight ? (w===null?0:w) : (w===null? log.weight : w);
     log.reps = parsedReps.reps;
     log.repsLabel = parsedReps.repsLabel;
-    log.musclePos = mp;
     saveLogs(logs);
     closeModal();
     renderExerciseHistory(exId);
