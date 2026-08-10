@@ -1,6 +1,19 @@
 # Matteos Jernlog — status
 
-Sidst opdateret: 2026-07-22
+Sidst opdateret: 2026-08-10
+
+## Opdatering 2026-08-10 (20. runde — godkendelses-bug fundet og rettet, "Øvelse 1-2/3-4" fjernet)
+Matteo bad om to ting i denne runde:
+
+**1. Fejl: nye brugere kunne komme forbi godkendelsesvæggen (FÆRDIG, root cause fundet og rettet)**
+Matteo havde oplevet at nogle nye brugere kunne bruge appen med det samme efter oprettelse, selvom han stadig havde dem stående som "Afventer" på "Godkend brugere"-siden. Root cause: `tryInsertProfile()` byggede efter oprettelse selv et lille profil-objekt i hukommelsen (`{id, username, email}`) i stedet for at bruge den rigtige række fra databasen — og glemte dermed `approved`-feltet helt. Godkendelses-tjekket i `bootAfterLogin()` (`myProfile.approved===false`) fejlede derfor stille (`undefined===false` er falsk), og den nye bruger sprang direkte ind i appen i det allerførste øjeblik efter oprettelse. Ramte kun helt nye konti — logger man ud og ind igen, henter koden den rigtige række fra databasen og virker korrekt, hvilket er derfor det virkede tilfældigt.
+**Rettelse:** `tryInsertProfile()` henter nu den indsatte række tilbage fra databasen (`.select().single()`) i stedet for at gætte selv, så `myProfile.approved` altid matcher det faktiske databaseindhold. Ingen database-ændring nødvendig — bekræftet direkte i Supabase at `profiles_select`-reglen (`using (true)`) tillader dette. Testet med jsdom (simuleret helt ny bruger uden eksisterende profil-række): ser nu korrekt "Venter på godkendelse"-skærmen og IKKE bundnavigationen/appen.
+
+**2. Fjernet "Øvelse 1-2 / Øvelse 3-4"-valget ved logning (FÆRDIG, testet)**
+Matteo vurderede at valget var irrelevant — man skal bare vælge øvelse, vægt og reps. Fjernet fra både Log-skærmen og "Rediger sæt"-boksen. Alle nye/redigerede sæt gemmes fortsat teknisk med værdien "1-2" (ingen database-ændring), men brugeren kan ikke længere vælge/se det.
+På Matteos ønske er øvelseshistorik-siden også forenklet: de to separate grafer ("Udvikling — øvelse 1-2 for muskel" og "øvelse 3-4 for muskel") er slået sammen til én samlet graf ("Udvikling", al historik). "· Øvelse 1-2/3-4"-mærkatet ved hvert enkelt sæt i historik-listen er også fjernet, da det ikke længere giver mening. Testet med jsdom (søg+vælg øvelse, log-formular, øvelseshistorik, rediger-sæt-modal) — alle 18 automatiske tjek bestået, ingen JS-fejl.
+
+**Skal uploades til GitHub:** kun `index.html`.
 
 ## Opdatering 2026-07-22 (19. runde — "Dig"-siden viser kun 2 seneste træninger + "Se tidligere")
 Matteo ville ikke skulle scrolle forbi alle sine træninger for at nå frem til "Størst fremgang"/"Mindst fremgang"-statistikkerne nederst på "Dig"-siden, hvis man har mange loggede træninger.
