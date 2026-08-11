@@ -95,7 +95,7 @@ function renderFeed(){
       html += renderWhenHtml(w, isLive);
       html += '</div>';
       if(isLive) html += '<span class="live-badge"><span class="live-dot"></span>I gang nu</span>';
-      else if(anyPR) html += '<span class="pr-badge">🏆 PR</span>';
+      else if(anyPR) html += "<span class=\"pr-badge\">"+ICON_MEDAL+"PR</span>";
       html += '</div>';
 
       if(muscles.length) html += '<div class="muted" style="margin-top:8px;">💪 '+escapeHtml(muscles.join(" · "))+'</div>';
@@ -112,7 +112,7 @@ function renderFeed(){
           setsTxt = x.tracked.map(function(s){ return formatSetShort(s, x.bodyweight); }).join(", ");
         }
         html += '<div class="feed-ex-line">';
-        html += '<div class="feed-ex-name">'+escapeHtml(x.name)+(x.isPR?' <span class="pr-badge" style="font-size:10px;padding:2px 6px;">🏆 PR</span>':'')+'</div>';
+        html += '<div class="feed-ex-name">'+escapeHtml(x.name)+(x.isPR?" <span class=\"pr-badge\" style=\"font-size:10px;padding:2px 6px;\">"+ICON_MEDAL_SM+"PR</span>":'')+'</div>';
         html += '<div class="feed-ex-sets">'+escapeHtml(setsTxt)+'</div>';
         html += '</div>';
       });
@@ -120,7 +120,7 @@ function renderFeed(){
 
       /* kommentarer — altid synlige, uafhængigt af "se detaljer" */
       html += '<div class="feed-comments" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">';
-      html += '<div class="feed-comments-label">💬 Kommentarer</div>';
+      html += "<div class=\"feed-comments-label\">"+ICON_COMMENT+"Kommentarer</div>";
       if(comments.length){
         html += '<div style="margin-bottom:4px;">';
         comments.forEach(function(c){
