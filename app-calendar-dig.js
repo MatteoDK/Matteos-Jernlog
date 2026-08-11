@@ -264,7 +264,7 @@ function renderDig(){
       html += renderWhenHtml(w, isLive);
       html += '</div>';
       if(isLive) html += '<span class="live-badge"><span class="live-dot"></span>I gang nu</span>';
-      else if(anyPR) html += '<span class="pr-badge">🏆 PR</span>';
+      else if(anyPR) html += "<span class=\"pr-badge\">"+ICON_MEDAL+"PR</span>";
       html += '</div>';
 
       if(muscles.length) html += '<div class="muted" style="margin-top:8px;">💪 '+escapeHtml(muscles.join(" · "))+'</div>';
@@ -280,7 +280,7 @@ function renderDig(){
           setsTxt = x.tracked.map(function(s){ return formatSetShort(s, x.bodyweight); }).join(", ");
         }
         html += '<div class="feed-ex-line">';
-        html += '<div class="feed-ex-name">'+escapeHtml(x.name)+(x.isPR?' <span class="pr-badge" style="font-size:10px;padding:2px 6px;">🏆 PR</span>':'')+'</div>';
+        html += '<div class="feed-ex-name">'+escapeHtml(x.name)+(x.isPR?" <span class=\"pr-badge\" style=\"font-size:10px;padding:2px 6px;\">"+ICON_MEDAL_SM+"PR</span>":'')+'</div>';
         html += '<div class="feed-ex-sets">'+escapeHtml(setsTxt)+'</div>';
         html += '</div>';
       });
@@ -288,7 +288,7 @@ function renderDig(){
 
       /* kommentarer — indlæses asynkront lige efter render (se loadDigComments) */
       html += '<div class="feed-comments" id="digc_'+wi+'" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">';
-      html += '<div class="feed-comments-label">💬 Kommentarer</div>';
+      html += "<div class=\"feed-comments-label\">"+ICON_COMMENT+"Kommentarer</div>";
       html += '<div class="muted" style="font-size:12px;">Henter…</div>';
       html += '</div>';
       html += '</div>'; /* /kort */
@@ -299,7 +299,7 @@ function renderDig(){
   }
 
   var ranking = computeProgressRanking();
-  html += '<h2 class="section">🏆 Størst fremgang</h2>';
+  html += '<h2 class="section" style="display:flex;align-items:center;gap:6px;">'+ICON_MEDAL+'Størst fremgang</h2>';
   html += '<div class="muted" style="margin-bottom:16px;">Baseret på dine seneste træningsgange pr. øvelse (op til 10), sammenlignet først vs. sidst i vinduet.</div>';
   if(ranking.wins.length===0){
     html += '<div class="card"><div class="empty-state">Log en øvelse mindst 2 gange for at se fremgang her.</div></div>';
@@ -309,7 +309,7 @@ function renderDig(){
     html += '</div>';
   }
 
-  html += '<h2 class="section">📉 Mindst fremgang / stagneret</h2>';
+  html += '<h2 class="section" style="display:flex;align-items:center;gap:6px;">'+ICON_TREND_DOWN+'Mindst fremgang / stagneret</h2>';
   if(ranking.plateaus.length===0){
     html += '<div class="card"><div class="empty-state">Ingen data endnu.</div></div>';
   } else {
@@ -375,7 +375,7 @@ function loadDigComments(workouts, me){
         var container = document.getElementById("digc_"+wi);
         if(!container) return;
         var comments = commentsByKey[String(w.start)] || [];
-        var h = '<div class="feed-comments-label">💬 Kommentarer</div>';
+        var h = "<div class=\"feed-comments-label\">"+ICON_COMMENT+"Kommentarer</div>";
         if(comments.length){
           h += '<div style="margin-bottom:4px;">';
           comments.forEach(function(c){
