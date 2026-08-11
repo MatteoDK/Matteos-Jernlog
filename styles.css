@@ -1,0 +1,256 @@
+  :root{
+    --bg:#101012;
+    --bg-elevated:#1b1b1e;
+    --bg-card:#202024;
+    --border:#2e2e33;
+    --text:#f2f2f0;
+    --text-dim:#9a9aa2;
+    --yellow:#f5c518;
+    --yellow-dim:#8a7215;
+    --red:#e5484d;
+    --green:#3ecf8e;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  /* LØSNING PÅ DEN SORTE BUNDBJÆLKE (fundet via bundtest.html/bundtest2.html, 15/7-2026):
+     Årsagen var en WebKit-fejl i standalone-tilstand med statusbar-stilen "black-translucent":
+     layout-vinduet blev gjort 59pt for kort (statusbar-højden) men tegnet fra skærmens top, så
+     de 59pt manglede i BUNDEN — udenfor rækkevidde af al CSS. Fixet er statusbar-stil "black"
+     i <head> (kræver at hjemmeskærms-genvejen slettes og tilføjes igen for at træde i kraft).
+     html/body-baggrunden er sat til --bg (samme som header), så et evt. statusbar-underlap i
+     toppen matcher headeren. Bunden ligger nu INDE i vinduet og males af bundnav'en selv. */
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;height:-webkit-fill-available;overflow:hidden;overscroll-behavior-y:none;}
+
+  /* App-skal: header og bundnav er faste, kun <main> scroller. position:fixed + inset:0 (i stedet for
+     height:100dvh) sikrer at app'en altid dækker HELE skærmen præcist, også på iPhones tilføjet til
+     hjemmeskærmen, hvor dvh-baseret højde nogle gange efterlader en lille sort stribe nederst. */
+  .app{position:fixed;inset:0;max-width:520px;margin:0 auto;display:flex;flex-direction:column;background:var(--bg-elevated);}
+
+  /* Bundnavigation — almindeligt element nederst i flex-kolonnen, ikke "fixed".
+     max(...,12px) sikrer et minimum af baggrund under ikonerne selv hvis env() skulle give 0. */
+  .bottom-nav{flex:0 0 auto;background:var(--bg-elevated);border-top:1px solid var(--border);display:flex;padding-bottom:max(env(safe-area-inset-bottom),8px);}
+  /* Knap-rækken er gjort højere (mere padding + større ikon/tekst) end før, så selve knapperne
+     fylder mere af det nederste område — iOS reserverer stadig en lille strimmel til
+     "swipe hjem"-bevægelsen (der kan ikke sidde knapper der), men jo mere plads knapperne selv
+     fylder, jo mindre af skærmen ser ud som "tomt" rum nedenunder. */
+  .bn-item{flex:1;background:none;border:none;color:var(--text-dim);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:14px 2px 18px;font-family:inherit;}
+  .bn-ic{font-size:25px;line-height:1;}
+  .bn-label{font-size:11px;font-weight:700;white-space:nowrap;}
+  .bn-item.active{color:var(--yellow);}
+  .bn-item:active{background:var(--bg-card);}
+  button, input, select{font-family:inherit;}
+
+  /* Top bar */
+  header.topbar{flex:0 0 auto;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top));}
+  header.topbar .title{font-size:16px;font-weight:800;letter-spacing:0.3px;color:var(--yellow);display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  header.topbar .title .dot{width:10px;height:10px;border-radius:50%;background:var(--red);}
+  .menu-btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);width:44px;height:44px;border-radius:12px;font-size:20px;display:flex;align-items:center;justify-content:center;}
+  .menu-btn:active{background:var(--yellow-dim);}
+
+  /* Dropdown menu */
+  .menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:none;}
+  .menu-overlay.open{display:block;}
+  .menu-panel{position:absolute;top:calc(70px + env(safe-area-inset-top));right:16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;min-width:240px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
+  .menu-item{display:flex;align-items:center;gap:12px;padding:16px 18px;font-size:16px;font-weight:600;border-bottom:1px solid var(--border);}
+  .menu-item:last-child{border-bottom:none;}
+  .menu-item:active{background:var(--bg-card);}
+  .menu-item .ic{font-size:18px;width:22px;text-align:center;}
+  .menu-item.active{color:var(--yellow);}
+  .menu-item .req-dot{margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;}
+
+  main{padding:16px;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg);}
+
+  /* Generic */
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+  .muted{color:var(--text-dim);font-size:13px;}
+  h2.section{font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin:22px 0 10px;}
+  h2.section:first-child{margin-top:0;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:14px 18px;border-radius:12px;font-size:16px;font-weight:700;width:100%;}
+  .btn:active{transform:scale(0.98);}
+  .btn.primary{background:var(--yellow);color:#141400;border-color:var(--yellow);}
+  .btn.danger{background:transparent;color:var(--red);border-color:var(--red);}
+  .btn.ghost{background:transparent;}
+  .btn.small{padding:10px 14px;font-size:14px;width:auto;}
+  .row{display:flex;gap:10px;}
+  .row > *{flex:1;}
+  input[type=text], input[type=number], input[type=email], input[type=password]{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:14px;border-radius:12px;font-size:16px;}
+  input:focus{outline:none;border-color:var(--yellow);}
+  label.field-label{display:block;font-size:13px;color:var(--text-dim);margin-bottom:6px;font-weight:600;}
+  .field{margin-bottom:14px;}
+
+  /* Search */
+  .search-wrap{position:relative;}
+  .search-results{margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg-elevated);}
+  .search-result-item{padding:14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .search-result-item:last-child{border-bottom:none;}
+  .search-result-item:active{background:var(--bg-card);}
+  .search-result-item .bw-tag{font-size:11px;color:var(--text-dim);border:1px solid var(--border);padding:2px 6px;border-radius:6px;}
+  .add-new-row{padding:14px;color:var(--yellow);font-weight:700;display:flex;align-items:center;gap:8px;}
+
+  /* Position toggle */
+  .toggle-group{display:flex;gap:8px;}
+  .toggle-opt{flex:1;text-align:center;padding:12px 6px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:700;color:var(--text-dim);}
+  .toggle-opt.selected{background:var(--yellow);color:#141400;border-color:var(--yellow);}
+
+  /* PR / trend badges */
+  .pr-badge{background:var(--green);color:#062617;font-size:12px;font-weight:800;padding:3px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;}
+  .trend{font-size:13px;font-weight:700;}
+  .trend.up{color:var(--green);}
+  .trend.down{color:var(--red);}
+  .trend.same{color:var(--text-dim);}
+
+  /* Toast */
+  .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--red);color:#fff;padding:14px 20px;border-radius:14px;font-weight:800;font-size:15px;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:200;display:none;max-width:90vw;text-align:center;}
+  .toast.show{display:block;animation:pop 0.25s ease-out;}
+  .toast.pr{background:var(--green);color:#062617;}
+  @keyframes pop{from{transform:translate(-50%,10px);opacity:0;}to{transform:translate(-50%,0);opacity:1;}}
+
+  /* Set list */
+  .set-line{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+  .set-line:last-child{border-bottom:none;}
+  .set-line .set-meta{font-size:13px;color:var(--text-dim);}
+  .set-actions{display:flex;gap:6px;}
+  .icon-btn{background:none;border:none;color:var(--text-dim);font-size:16px;padding:6px;}
+  .icon-btn.edit:active{color:var(--yellow);}
+  .icon-btn.del:active{color:var(--red);}
+  .skift-ex-btn{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;font-size:10.5px;line-height:1.2;font-weight:700;padding:3px 10px;text-align:center;}
+  .skift-ex-btn:active{background:var(--yellow-dim);color:var(--text);}
+
+  .session-block{margin-bottom:16px;}
+  .session-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .session-date{font-weight:800;font-size:15px;}
+
+  /* Exercise list rows (history/program) */
+  .list-row{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid var(--border);}
+  .list-row:last-child{border-bottom:none;}
+  .list-row:active{background:var(--bg-elevated);}
+  .list-row .name{font-weight:700;font-size:15px;}
+  .chev{color:var(--text-dim);}
+
+  /* Back button */
+  .back-btn{display:flex;align-items:center;gap:6px;color:var(--yellow);font-weight:700;margin-bottom:14px;font-size:15px;}
+
+  /* Graph */
+  svg.graph{width:100%;height:160px;display:block;}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:150;display:none;align-items:flex-end;}
+  .modal-overlay.open{display:flex;}
+  .modal-sheet{background:var(--bg-elevated);border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:85vh;overflow-y:auto;}
+  .modal-sheet h3{margin-top:0;}
+
+  .empty-state{text-align:center;padding:30px 10px;color:var(--text-dim);}
+  .fab-hint{font-size:13px;color:var(--text-dim);text-align:center;margin-top:6px;}
+
+  .day-title{font-size:18px;font-weight:800;margin:0 0 4px;}
+  .train-tag{display:inline-block;background:var(--yellow);color:#141400;font-weight:800;font-size:12px;padding:2px 8px;border-radius:8px;margin-bottom:8px;}
+
+  /* Reps wheel picker */
+  .reps-picker-wrap{position:relative;height:64px;margin-bottom:4px;}
+  .reps-picker-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;height:100%;align-items:center;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .reps-picker-track::-webkit-scrollbar{display:none;}
+  .reps-item{scroll-snap-align:center;flex:0 0 56px;text-align:center;font-size:20px;font-weight:700;color:var(--text-dim);display:flex;align-items:center;justify-content:center;height:100%;transition:font-size 0.1s, color 0.1s;}
+  .reps-item.active{color:var(--yellow);font-size:30px;}
+  .reps-pad{flex:0 0 calc(50% - 28px);}
+  .reps-picker-indicator{position:absolute;left:50%;top:4px;bottom:4px;width:56px;margin-left:-28px;border-top:2px solid var(--yellow);border-bottom:2px solid var(--yellow);pointer-events:none;border-radius:6px;}
+  .mode-toggle-link{text-align:center;font-size:13px;color:var(--yellow);font-weight:700;padding:8px 0 2px;}
+
+  /* Login */
+  .login-wrap{padding:30px 4px 10px;}
+  .login-logo{text-align:center;font-size:40px;margin-bottom:6px;}
+  .login-title{text-align:center;font-size:22px;font-weight:800;color:var(--yellow);margin-bottom:4px;}
+  .login-sub{text-align:center;color:var(--text-dim);font-size:14px;margin-bottom:22px;}
+  .login-switch{text-align:center;color:var(--yellow);font-weight:700;font-size:14px;padding:14px 0 4px;}
+
+  /* Feed */
+  .feed-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px;}
+  .feed-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .avatar{width:38px;height:38px;border-radius:50%;background:var(--yellow);color:#141400;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;flex:0 0 38px;}
+  .feed-who{font-weight:800;font-size:15px;}
+  .feed-when{color:var(--text-dim);font-size:12px;margin-top:2px;}
+  .feed-date-badge{display:inline-block;background:var(--bg-card);color:var(--text);font-weight:800;font-size:12px;padding:3px 9px;border-radius:8px;letter-spacing:0.2px;}
+  .feed-ex-line{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+  .feed-ex-line:last-child{border-bottom:none;}
+  .feed-ex-name{font-weight:700;font-size:14px;}
+  .feed-ex-sets{color:var(--text-dim);font-size:13px;text-align:right;flex-shrink:0;max-width:55%;}
+  .feed-comments-label{font-size:12px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;}
+  .comment-line{display:flex;gap:8px;padding:7px 0;font-size:14px;align-items:baseline;}
+  .comment-author{font-weight:800;color:var(--yellow);flex-shrink:0;}
+  .comment-body{word-break:break-word;flex:1;}
+  .comment-date{color:var(--text-dim);font-size:11px;flex-shrink:0;margin-left:auto;white-space:nowrap;}
+  .comment-input-row{display:flex;gap:8px;margin-top:10px;}
+  .comment-input-row input{flex:1;padding:11px 14px;font-size:15px;}
+  .comment-send{background:var(--yellow);color:#141400;border:none;border-radius:12px;font-weight:800;font-size:14px;padding:0 16px;}
+
+  /* Friends */
+  .friend-status{font-size:12px;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:3px 8px;}
+  .pill-btn{background:var(--yellow);color:#141400;border:none;border-radius:10px;font-weight:800;font-size:13px;padding:9px 14px;}
+  .pill-btn.ghost{background:transparent;color:var(--red);border:1px solid var(--red);}
+  .pill-btn.dim{background:var(--bg-elevated);color:var(--text-dim);border:1px solid var(--border);}
+
+  /* Faner øverst på Øvelser/Mit program-siden (Ryg/Bryst/Ben) */
+  .ex-tabs{display:flex;gap:8px;margin-bottom:6px;}
+  .ex-tab{flex:1;background:var(--bg-elevated);color:var(--text-dim);border:1px solid var(--border);border-radius:10px;font-weight:800;font-size:14px;padding:10px 6px;}
+  .ex-tab.active{background:var(--yellow);color:#141400;border-color:var(--yellow);}
+
+  /* Kalender */
+  .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .cal-title{font-weight:800;font-size:16px;}
+  .cal-sub{font-size:12px;color:var(--text-dim);}
+  .cal-nav{display:flex;gap:8px;}
+  .cal-nav button{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;font-size:17px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .cal-dow{text-align:center;font-size:11px;color:var(--text-dim);font-weight:700;padding:2px 0;}
+  .cal-day{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:13px;color:var(--text-dim);background:var(--bg-elevated);border:1px solid transparent;}
+  .cal-day.out{visibility:hidden;}
+  .cal-day.trained{background:var(--yellow);color:#141400;font-weight:800;}
+  .cal-day.today{border-color:var(--yellow);}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .stat-box{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;}
+  .stat-num{font-size:22px;font-weight:800;color:var(--yellow);}
+  .stat-label{font-size:11px;color:var(--text-dim);margin-top:2px;}
+
+  /* Live-badge i feed */
+  .live-badge{background:var(--green);color:#0b2b1c;font-size:12px;font-weight:800;padding:3px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:#0b2b1c;animation:blink 1.2s infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.25;}}
+
+  /* Kommentar-side */
+  .conv-title{font-weight:800;font-size:14px;margin-bottom:2px;}
+  .conv-when{color:var(--text-dim);font-size:12px;margin-bottom:8px;}
+  .new-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-left:6px;}
+
+  /* Hvordan-links på øvelsesside */
+  .howto-row{display:flex;gap:10px;margin:10px 0 14px;}
+  .howto-link{flex:1;text-align:center;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:11px 8px;color:var(--yellow);font-weight:700;font-size:13px;text-decoration:none;}
+
+  /* Træk-og-slip rækkefølge på Øvelser-siden */
+  .reorder-list .list-row{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
+  .list-row.dragging{opacity:0.75;background:var(--bg-elevated);outline:2px solid var(--yellow);border-radius:10px;position:relative;z-index:10;}
+
+  /* Swipe-venstre for at fjerne en øvelse fra Program 1/2 (ryger ned i Øvrige øvelser) */
+  .swipe-wrap{position:relative;overflow:hidden;}
+  .swipe-wrap .swipe-bg{position:absolute;inset:0;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:flex-end;padding-right:20px;font-weight:800;font-size:14px;z-index:1;}
+  .swipe-wrap .list-row{position:relative;z-index:2;background:var(--bg-card);}
+
+  /* Konfetti-regn ved ny PR (se burstConfetti() i app-core.js) */
+  .confetti-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:250;}
+  .confetti-piece{position:absolute;top:-24px;left:0;border-radius:2px;opacity:0;animation-name:confetti-fall;animation-timing-function:cubic-bezier(.25,.1,.4,1);animation-fill-mode:forwards;}
+  @keyframes confetti-fall{
+    0%{opacity:1;transform:translate(var(--dx0), 0) rotate(0deg);}
+    12%{opacity:1;}
+    100%{opacity:0;transform:translate(var(--dx1), var(--dy1)) rotate(var(--rot));}
+  }
+
+  /* Onboarding (ny bruger, første login efter godkendelse) */
+  .onb-progress{display:flex;gap:6px;justify-content:center;margin-bottom:20px;}
+  .onb-progress i{width:20px;height:4px;border-radius:2px;background:var(--border);display:block;}
+  .onb-progress i.on{background:var(--yellow);}
+  .onb-title{text-align:center;font-size:20px;font-weight:800;color:var(--yellow);margin-bottom:6px;text-wrap:balance;}
+  .onb-sub{text-align:center;margin-bottom:22px;}
+  .onb-row{display:flex;align-items:center;gap:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px;margin-bottom:10px;}
+  .onb-row .ic{font-size:22px;flex:0 0 auto;width:30px;text-align:center;}
+  .onb-row .t{font-weight:700;font-size:14.5px;}
+  .onb-row .d{font-size:12.5px;color:var(--text-dim);margin-top:1px;line-height:1.4;}
+  .onb-skip{text-align:center;font-size:13px;color:var(--text-dim);font-weight:600;padding:14px 0 0;}
+  .onb-done{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:60px;}
