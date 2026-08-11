@@ -1,0 +1,11 @@
+{
+  "name": "matteos-jernlog-tests",
+  "private": true,
+  "description": "Kun til at køre tests.js lokalt — appen selv har intet build-trin og er stadig bare statiske filer (index.html, styles.css, app-*.js).",
+  "scripts": {
+    "test": "node tests.js"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.0"
+  }
+}
