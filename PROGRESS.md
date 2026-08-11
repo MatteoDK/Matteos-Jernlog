@@ -1,6 +1,24 @@
 # Matteos Jernlog — status
 
-Sidst opdateret: 2026-08-10
+Sidst opdateret: 2026-08-11
+
+## Opdatering 2026-08-11 (23. runde — komplet nyt visuelt look, "resultattavle"-designet)
+Matteo bad om et helt nyt, "high-end App Store"-look — samme funktioner, samme steder, kun det visuelle. Retning: i stedet for endnu en generisk mørk fitness-app, er inspirationen konkurrence-vægtløftnings resultattavlen ("jern"-navnet taget bogstaveligt) — store selvsikre tal, maskinerede "plader" i stedet for bløde kort, ægte tegnede ikoner i stedet for emoji. Vist som en klikbar mockup først og godkendt af Matteo (med to justeringsrunder: fjernet en falsk forhåndsvisning på onboarding-skærm 2 + tilføjet "Øvrige øvelser"-forklaring, og rettet konfetti til at falde fra toppen af skærmen i stedet for bunden), derefter bygget ind i den rigtige app.
+
+**Ny `PRODUCT.md`** — produktets brugere/formål/begrænsninger dokumenteret (bruges af fremtidige redesign-runder, skrives ikke løbende om).
+
+**Det visuelle system:**
+- Ny farvepalet: køligere stål-sort/grå-toner, og selve `--yellow`-variablen (bruges alle steder i koden) er ændret fra fladt gult til en varmere "rav/aflæsnings"-amber
+- Rigtig skrifttype: **Oswald** (kondenseret, fed), indlejret direkte i `styles.css` som en `@font-face` (ingen ekstern hentning — virker uden internet til selve skrifttypen) — bruges til alle overskrifter, tal, knapper og labels; almindelig brødtekst er stadig telefonens systemskrift
+- Kort/"plader" har nu en let "maskineret" kant (en tynd lys stribe øverst) i stedet for en blød skygge, og er en anelse mindre runde i hjørnerne (10px i stedet for 14px)
+- Bundnavigationen har fået en lille aflæsnings-streg over den aktive fane, som en resultattavle
+- **Alle system-ikoner er nu håndtegnede SVG'er i stedet for emoji** — bundnav (Feed/Kalender/Log øvelse/Historik/Dig), dropdown-menuen (Kommentarer/Øvelser/Venner/Godkend brugere/Log ud), PR-badges, "Størst/Mindst fremgang"-overskrifter, login-logo, onboarding-ikoner. Historik-ikonet er bevidst et ur (Matteos eget forslag), ikke en graf-linje. Almindelige tekst-emoji i selve indholdet (fx "💪 Ben", "🎉" i toast-beskeder) er bevidst IKKE ændret — kun ikoner der optræder gentagne gange som systemelementer
+
+**Ikke ændret:** navnet "Jernlog"/"Matteos Jernlog", app-ikonet, at appen er udelukkende i mørkt tema, og al funktionalitet/struktur — kun udseendet.
+
+**Testet:** Alle 30 automatiske tjek i `tests.js` består fortsat (ingen adfærdsændring). Desuden gennemgået visuelt i browseren med den rigtige app-kode (Feed, Log øvelse, Historik/graf, Kalender, menu) — alt renderer korrekt.
+
+**Skal uploades til GitHub:** `index.html`, `styles.css`, `app-core.js`, `app-feed.js`, `app-calendar-dig.js`, `app-history.js`, `manifest.json`, samt den nye `PRODUCT.md`.
 
 ## Opdatering 2026-08-10 (22. runde — PR-konfetti + onboarding for nye brugere, bygget efter godkendte mockups)
 Efter code review-runden (21. runde) blev to nye funktioner først vist som klikbare Artifact-mockups til godkendelse, justeret efter feedback (konfetti skulle falde fra toppen og vare længere; onboarding-øvelsesvalget blev droppet til fordel for ren tekst + en ny "tilføj venner"-skærm), og er nu bygget ind i den rigtige app.
