@@ -383,7 +383,13 @@ function showToast(msg, ms, type){
 }
 
 /* Lille konfetti-regn ved ny PR — falder fra toppen af skærmen og rydder sig selv op. */
-var CONFETTI_COLORS = ["#f5c518","#3ecf8e","#f2f2f0","#8a7215"];
+var CONFETTI_COLORS = ["#ffb238","#34d399","#f4f5f6","#8a6420"];
+
+/* Delte ikon-snippets (SVG), brugt flere steder på tværs af app-*.js i stedet for emoji */
+var ICON_MEDAL = '<svg style="width:11px;height:11px;"><use href="#ic-medal"/></svg>';
+var ICON_MEDAL_SM = '<svg style="width:9px;height:9px;"><use href="#ic-medal"/></svg>';
+var ICON_COMMENT = '<svg style="width:12px;height:12px;"><use href="#ic-comment"/></svg>';
+var ICON_TREND_DOWN = '<svg style="width:12px;height:12px;"><use href="#ic-trend-down"/></svg>';
 function burstConfetti(){
   var layer = document.getElementById("confettiLayer");
   if(!layer) return;
@@ -574,7 +580,7 @@ function renderLogin(mode, prefillEmail){
   document.getElementById("menuBtn").style.display = "none";
   document.getElementById("bottomNav").style.display = "none";
   var html = '<div class="login-wrap">';
-  html += '<div class="login-logo">🏋️</div>';
+  html += '<div class="login-logo" style="color:var(--yellow);"><svg style="width:44px;height:44px;"><use href="#ic-barbell"/></svg></div>';
   html += '<div class="login-title">Master Matteos Jernlog</div>';
   if(mode==="sent"){
     html += '<div class="login-sub">Konto oprettet!</div>';
@@ -853,17 +859,17 @@ function renderOnboarding(){
 
 function renderOnboardingWelcome(){
   var html = onbProgressHtml();
-  html += '<div style="text-align:center;font-size:44px;margin-bottom:10px;">🏋️</div>';
+  html += '<div style="text-align:center;color:var(--yellow);margin-bottom:10px;"><svg style="width:40px;height:40px;"><use href="#ic-barbell"/></svg></div>';
   html += '<div class="onb-title">Velkommen til Jernlog!</div>';
   html += '<div class="muted onb-sub">Her er en hurtig rundtur, så du ved hvor tingene er.</div>';
   [
-    ["📣","Feed","Se dine venners træninger og PR'er"],
-    ["📅","Kalender","Se hvilke dage du har trænet, streaks"],
-    ["🏋️","Log øvelse","Skriv vægt og reps ned på under 10 sek."],
-    ["📈","Historik","Grafer og fremgang pr. øvelse"],
-    ["🙂","Dig","Dine seneste træninger og fremgang"]
+    ["ic-feed","Feed","Se dine venners træninger og PR'er"],
+    ["ic-calendar","Kalender","Se hvilke dage du har trænet, streaks"],
+    ["ic-barbell","Log øvelse","Skriv vægt og reps ned på under 10 sek."],
+    ["ic-clock","Historik","Grafer og fremgang pr. øvelse"],
+    ["ic-user","Dig","Dine seneste træninger og fremgang"]
   ].forEach(function(n){
-    html += '<div class="onb-row"><div class="ic">'+n[0]+'</div><div><div class="t">'+n[1]+'</div><div class="d">'+n[2]+'</div></div></div>';
+    html += '<div class="onb-row"><div class="ic"><svg><use href="#'+n[0]+'"/></svg></div><div><div class="t">'+n[1]+'</div><div class="d">'+n[2]+'</div></div></div>';
   });
   html += '<button class="btn primary" id="onbNext" style="margin-top:8px;">Videre</button>';
   html += '<div class="onb-skip" id="onbSkip">Spring over</div>';
@@ -877,12 +883,12 @@ function renderOnboardingProgram(){
   html += '<div class="onb-title">Byg dit eget program</div>';
   html += '<div class="muted onb-sub">Under "Øvelser/Mit program" i menuen sætter du dit program op — i dit eget tempo.</div>';
   [
-    ["➕","Tilføj øvelser","Vælg blandt dem der allerede er i appen, eller opret helt dine egne fra bunden."],
-    ["📋","Program 1 og 2","Læg øvelserne i Program 1/2, så appen husker hvad du plejer at lave på de forskellige træningsdage."],
-    ["🗂️","Øvrige øvelser","En tredje liste til øvelser du laver en gang imellem, men som ikke er en fast del af dit split. Nye øvelser havner automatisk her, indtil du selv sætter dem på et program."],
-    ["⚙️","Dine egne muskelgrupper","Alle træner ikke ens — du kan selv vælge hvilke muskelgrupper der hører sammen, hvis din opdeling er anderledes."]
+    ["ic-plus","Tilføj øvelser","Vælg blandt dem der allerede er i appen, eller opret helt dine egne fra bunden."],
+    ["ic-program","Program 1 og 2","Læg øvelserne i Program 1/2, så appen husker hvad du plejer at lave på de forskellige træningsdage."],
+    ["ic-folder","Øvrige øvelser","En tredje liste til øvelser du laver en gang imellem, men som ikke er en fast del af dit split. Nye øvelser havner automatisk her, indtil du selv sætter dem på et program."],
+    ["ic-settings","Dine egne muskelgrupper","Alle træner ikke ens — du kan selv vælge hvilke muskelgrupper der hører sammen, hvis din opdeling er anderledes."]
   ].forEach(function(f){
-    html += '<div class="onb-row"><div class="ic">'+f[0]+'</div><div><div class="t">'+f[1]+'</div><div class="d">'+f[2]+'</div></div></div>';
+    html += '<div class="onb-row"><div class="ic"><svg><use href="#'+f[0]+'"/></svg></div><div><div class="t">'+f[1]+'</div><div class="d">'+f[2]+'</div></div></div>';
   });
   html += '<button class="btn primary" id="onbNext" style="margin-top:8px;">Videre</button>';
   html += '<div class="onb-skip" id="onbSkip">Spring over</div>';
