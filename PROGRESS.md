@@ -2,6 +2,47 @@
 
 Sidst opdateret: 2026-08-10
 
+## Opdatering 2026-08-10 (22. runde — PR-konfetti + onboarding for nye brugere, bygget efter godkendte mockups)
+Efter code review-runden (21. runde) blev to nye funktioner først vist som klikbare Artifact-mockups til godkendelse, justeret efter feedback (konfetti skulle falde fra toppen og vare længere; onboarding-øvelsesvalget blev droppet til fordel for ren tekst + en ny "tilføj venner"-skærm), og er nu bygget ind i den rigtige app.
+
+**1. PR-fejre-animation (FÆRDIG, testet)**
+`showToast()` i `app-core.js` kalder nu `burstConfetti()` når `type==="pr"` — et lille konfetti-regn (46 stykker, appens egne farver) der falder fra toppen af skærmen og længere ned end først forsøgt, over ca. 2,3-3,4 sekunder. Ny `<div id="confettiLayer">` i `index.html` + tilhørende CSS i `styles.css`. Ingen database-ændring.
+
+**2. Onboarding for nye brugere (FÆRDIG, testet)**
+4 sprinbare skærme, vist automatisk første gang en NY, netop godkendt bruger logger ind (lige efter godkendelsesvæggen fra 20. runde):
+1. Velkommen — kort forklaring af de 5 bundnav-faner
+2. Byg dit eget program — ren tekst om "Øvelser/Mit program": tilføj øvelser, Program 1/2, Øvrige øvelser (den tredje liste til lejlighedsvise øvelser), og egne muskelgruppe-grupperinger
+3. Tilføj dem du kender — henter ALLE brugere direkte (ikke kun venner) så man kan sende venneanmodning med det samme, uden at skulle vide at "Venner"-siden findes
+4. Du er klar! → ind i appen som normalt
+
+**Database-migration nødvendig:** `supabase-migration-onboarding.sql` (ny fil, samme mønster som de tidligere) — tilføjer `profiles.has_onboarded` (default `false`), og markerer alle NUVÆRENDE konti som allerede onboardet, så kun fremtidige nye brugere ser flowet. **Kør denne i Supabase SQL Editor** — indtil den er kørt, findes kolonnen ikke, og koden springer bare onboardingen over for alle (helt harmløst, ingen fejl), så rækkefølgen er ikke kritisk denne gang, men gør det gerne snart så nye brugere får glæde af det.
+
+**Testet:** `tests.js` udvidet med 12 nye automatiske tjek (konfetti udløses ved PR, hele onboarding-flowet klikket igennem inkl. vennelisten, samt at man havner korrekt i appen bagefter med bundnav synlig). Fangede undervejs en rigtig fejl (bundnav'en forblev skjult efter afsluttet onboarding) — rettet før upload. Alle 30 tjek i alt består nu.
+
+**Skal uploades til GitHub:** `index.html`, `styles.css`, `app-core.js`, `tests.js`, samt den nye `supabase-migration-onboarding.sql` (som du selv kører i Supabase).
+
+## Opdatering 2026-08-10 (21. runde — kode-oprydning: fil-split + permanente tests)
+Efter en "senior code review"-gennemgang af hele appen kom to rene oprydningspunkter, som Matteo godkendte uden forbehold (ingen adfærdsændring for brugerne):
+
+**1. `index.html` splittet op (FÆRDIG, verificeret)**
+Den ene 3500-linjers fil er splittet mekanisk (kun flyttet, ingen kode omskrevet) til:
+- `styles.css` — al CSS
+- `app-core.js` — Supabase-opsætning, delt state, cloud-sync, router (`goto`/`render`), login/opret konto, boot-flow
+- `app-log.js` — Log øvelse-siden
+- `app-history.js` — Historik-liste + øvelseshistorik-detalje/graf
+- `app-exercises.js` — Øvelser/Mit program-siden, rækkefølge, startkatalog
+- `app-calendar-dig.js` — Kalender + Dig/Wins & Plateaus + fælles hjælpefunktioner
+- `app-feed.js` — Feed-siden
+- `app-admin-friends.js` — Godkend brugere, Venner, Venneprofil, Kommentarer, app-init
+
+Ingen ES-moduler (bevidst, for slet ikke at skulle røre kodens indhold) — filerne deler stadig samme globale scope, ligesom da alt lå i én fil. Én lille, usynlig teknisk detalje: koden lå før inde i en lukket "boks" (IIFE) som ikke kunne ses udefra; nu ligger de delte variable (`state`, `session` osv.) direkte i browserens globale scope for at kunne deles på tværs af filerne uden en build-proces. Betyder intet for hvordan appen ser ud eller virker — kun synligt hvis man selv åbner browserens udviklerkonsol og leder efter dem.
+Verificeret byte-for-byte at ingen kodelinjer er tabt eller ændret undervejs (automatisk diff mod originalen), samt `node --check`-syntakstjek af hver fil og en fuld jsdom-gennemklikning (alle sider/funktioner) — alt identisk med før splittet.
+
+**2. Permanent testfil tilføjet (FÆRDIG)**
+Ny `tests.js` (kør med `npm install && npm test`) — indeholder nu 18 automatiske tjek: at alle sider/filer indlæses korrekt sammen, at Øvelse 1-2/3-4-fjernelsen (se nedenfor) holder, og at godkendelsesvæg-fejlen fra tidligere i dag forbliver rettet. `package.json` tilføjet (kun til at hente jsdom til testene — påvirker ikke selve appen, som stadig er rene statiske filer uden build-trin). `.gitignore` tilføjet så `node_modules` ikke skal uploades til GitHub.
+
+**Skal uploades til GitHub:** `index.html`, `styles.css`, alle 7 `app-*.js`-filer, `tests.js`, `package.json`, `.gitignore`. `package-lock.json` kan uploades med, men er ikke strengt nødvendig.
+
 ## Opdatering 2026-08-10 (20. runde — godkendelses-bug fundet og rettet, "Øvelse 1-2/3-4" fjernet)
 Matteo bad om to ting i denne runde:
 
@@ -230,7 +271,7 @@ Appen startede som et rent lokalt/offline-projekt (data kun på telefonen, ingen
 "Strava for vægtløftning" — personlig styrketræning-tracker delt mellem Matteo og hans venner (fx Thor). Log øvelser, sæt, reps, vægt, se grafer/statistik og PR-tracking, se venners træning i en feed.
 
 ## Arkitektur (nuværende)
-- Én fil: `index.html` — HTML/CSS/vanilla JS, ingen build-trin
+- `index.html` (skelet) + `styles.css` + 7 `app-*.js`-filer — vanilla JS, stadig **ingen build-trin** (bare flere `<script src>`-tags, ikke ES-moduler — delt globalt scope som før, se 20. runde 2/2 nedenfor)
 - Hostet på GitHub Pages, repo: `MatteoDK/Matteos-Jernlog`
 - Bruges som PWA på iPhone via "Føj til hjemmeskærm"
 - **Backend: Supabase** (gratis plan), projekt "jernlog", region Stockholm
