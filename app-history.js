@@ -123,7 +123,7 @@ function renderExerciseHistory(exId){
     var trend = trendForSession(sessions, idx);
     var dateLabel = idx===0 ? ("Startvægt "+s.date.slice(0,4)) : fmtDateDisplay(s.date);
     html += '<div class="session-block">';
-    html += '<div class="session-header"><span class="session-date">'+dateLabel+'</span>'+(isPR?'<span class="pr-badge">🏆 PR</span>':(trend?trendArrow(trend):''))+'</div>';
+    html += '<div class="session-header"><span class="session-date">'+dateLabel+'</span>'+(isPR?"<span class=\"pr-badge\">"+ICON_MEDAL+"PR</span>":(trend?trendArrow(trend):''))+'</div>';
     s.sets.forEach(function(set){
       html += '<div class="set-line" data-logid="'+set.id+'">';
       if(set.skipped){
